@@ -39,23 +39,21 @@ public class AHHistoryMenu extends AHBaseMenu {
             AHHistoryItem hi = history.get(i);
             boolean sold = hi.getSeller().equals(player.getUniqueId());
 
-            Material iconMat;
-            try {
-                iconMat = Material.valueOf(hi.getItemName());
-            } catch (Exception e) {
-                iconMat = Material.PAPER;
-            }
+            Material iconMat = hi.getItem().getType();
 
             String status = sold ? "§c§l[SOLD]" : "§a§l[BOUGHT]";
             String userTag = sold ? "§7Buyer: §f" : "§7Seller: §f";
             String userName = Bukkit.getOfflinePlayer(sold ? hi.getBuyer() : hi.getSeller()).getName();
 
-            inventory.setItem(i - start, create(iconMat, status + " §f" + hi.getItemName(),
+            String previewHint = AHConfirmMenu.isShulker(hi.getItem()) ? "§e§l▶ Click to View Contents" : "";
+
+            inventory.setItem(i - start, create(iconMat, status + " §f" + hi.getItem().getType(),
                     "§8§m                    ",
                     userTag + userName,
                     "§7Price: §e" + AHFormatter.formatPrice(hi.getPrice()),
                     "§7Date: §8" + new Date(hi.getTimestamp()).toString(),
-                    " "));
+                    "",
+                    previewHint));
         }
 
         // Bottom Bar

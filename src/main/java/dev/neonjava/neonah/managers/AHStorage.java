@@ -3,6 +3,7 @@ package dev.neonjava.neonah.managers;
 import dev.neonjava.neonah.NeonAH;
 import dev.neonjava.neonah.models.AHHistoryItem;
 import dev.neonjava.neonah.models.AHItem;
+import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
@@ -37,7 +38,13 @@ public class AHStorage {
                         "id TEXT PRIMARY KEY, seller TEXT, item TEXT)");
 
                 s.execute("CREATE TABLE IF NOT EXISTS history (" +
-                        "id TEXT PRIMARY KEY, seller TEXT, buyer TEXT, price DOUBLE, item_name TEXT, sold_at LONG)");
+                        "id TEXT PRIMARY KEY, seller TEXT, buyer TEXT, price DOUBLE, item_blob TEXT, sold_at LONG)");
+
+                // Migration: Check if item_blob exists, if not, rename item_name or add it
+                try {
+                    s.execute("ALTER TABLE history ADD COLUMN item_blob TEXT");
+                } catch (Exception ignored) {
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -125,13 +132,13 @@ public class AHStorage {
         }
     }
 
-    public void recordHistory(UUID seller, UUID buyer, double price, String itemName) {
+    public void recordHistory(UUID seller, UUID buyer, double price, ItemStack item) {
         try (PreparedStatement ps = connection.prepareStatement("INSERT INTO history VALUES (?,?,?,?,?,?)")) {
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, seller.toString());
             ps.setString(3, buyer.toString());
             ps.setDouble(4, price);
-            ps.setString(5, itemName);
+            ps.setString(5, serialize(item));
             ps.setLong(6, System.currentTimeMillis());
             ps.execute();
         } catch (SQLException e) {
@@ -147,11 +154,15 @@ public class AHStorage {
             ps.setString(2, player.toString());
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
+                ItemStack is = deserialize(rs.getString("item_blob"));
+                if (is == null)
+                    is = new ItemStack(Material.PAPER); // Fail-safe for old entries
+
                 list.add(new AHHistoryItem(
                         UUID.fromString(rs.getString("seller")),
                         UUID.fromString(rs.getString("buyer")),
                         rs.getDouble("price"),
-                        rs.getString("item_name"),
+                        is,
                         rs.getLong("sold_at")));
             }
         } catch (SQLException e) {

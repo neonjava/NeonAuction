@@ -68,8 +68,8 @@ public class AHManager {
         storage.clearUnclaimed(uuid);
     }
 
-    public void recordSale(UUID s, UUID b, double p, String n) {
-        storage.recordHistory(s, b, p, n);
+    public void recordSale(UUID s, UUID b, double p, ItemStack item) {
+        storage.recordHistory(s, b, p, item);
     }
 
     public List<AHHistoryItem> getHistory(UUID p) {

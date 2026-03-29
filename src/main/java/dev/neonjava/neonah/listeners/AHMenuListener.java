@@ -5,6 +5,7 @@ import dev.neonjava.neonah.menus.*;
 import dev.neonjava.neonah.utils.AHDialogUtils;
 import dev.neonjava.neonah.utils.BedrockUtils;
 import dev.neonjava.neonah.models.AHItem;
+import dev.neonjava.neonah.models.AHHistoryItem;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -41,6 +42,9 @@ public class AHMenuListener implements Listener {
             handleMain(player, menu, slot);
         } else if (holder instanceof AHHistoryMenu menu) {
             handleHistory(player, menu, slot);
+        } else if (holder instanceof AHHistoryPreviewMenu) {
+            if (slot == 49)
+                new AHHistoryMenu(player).open(player);
         } else if (holder instanceof AHMyListingsMenu menu) {
             handleListings(player, menu, slot);
         } else if (holder instanceof AHConfirmMenu menu) {
@@ -111,6 +115,18 @@ public class AHMenuListener implements Listener {
     }
 
     private void handleHistory(Player player, AHHistoryMenu menu, int slot) {
+        if (slot < 45) {
+            List<AHHistoryItem> history = AHManager.get().getHistory(player.getUniqueId());
+            int index = (menu.getPage() * 45) + slot;
+            if (index < history.size()) {
+                AHHistoryItem hi = history.get(index);
+                if (AHConfirmMenu.isShulker(hi.getItem())) {
+                    new AHHistoryPreviewMenu(hi.getItem()).open(player);
+                }
+            }
+            return;
+        }
+
         switch (slot) {
             case 48 -> menu.prev();
             case 49 -> new AHMainMenu(player, false).open(player);

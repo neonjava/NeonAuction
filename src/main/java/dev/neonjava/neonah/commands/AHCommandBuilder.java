@@ -8,6 +8,7 @@ import dev.neonjava.neonah.managers.AHManager;
 import dev.neonjava.neonah.models.AHItem;
 import dev.neonjava.neonah.menus.AHMainMenu;
 import dev.neonjava.neonah.menus.AHHistoryMenu;
+import dev.neonjava.neonah.utils.AHFormatter;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import org.bukkit.Bukkit;
@@ -50,6 +51,11 @@ public class AHCommandBuilder {
                                         return 0;
                                     }
 
+                                    if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
+                                        p.sendMessage("§c§l[AH] §cRenamed items cannot be sold in the auction house!");
+                                        return 0;
+                                    }
+
                                     AHManager.get().addItem(new AHItem(p.getUniqueId(), item.clone(), price));
                                     p.getInventory().setItemInMainHand(null);
                                     p.sendMessage("§a§l[AH] §aItem listed for "
@@ -81,8 +87,8 @@ public class AHCommandBuilder {
                                     AHManager.get().getHistory(op.getUniqueId()).forEach(hi -> {
                                         boolean sold = hi.getSeller().equals(op.getUniqueId());
                                         String type = sold ? "§c[SOLD]" : "§a[BOUGHT]";
-                                        sender.sendMessage(
-                                                type + " §f" + hi.getItemName() + " §e" + hi.getPrice() + "₹");
+                                        sender.sendMessage(type + " §f" + hi.getItem().getType() + " §e"
+                                                + AHFormatter.formatPrice(hi.getPrice()));
                                     });
                                     return 1;
                                 })))

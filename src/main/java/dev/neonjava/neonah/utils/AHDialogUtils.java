@@ -141,8 +141,7 @@ public class AHDialogUtils {
 
                 NeonAH.getEcon().withdrawPlayer(p, item.getPrice());
                 NeonAH.getEcon().depositPlayer(Bukkit.getOfflinePlayer(item.getSeller()), item.getPrice());
-                AHManager.get().recordSale(item.getSeller(), p.getUniqueId(), item.getPrice(),
-                                item.getItem().getType().toString());
+                AHManager.get().recordSale(item.getSeller(), p.getUniqueId(), item.getPrice(), item.getItem());
                 AHManager.get().removeItem(item);
                 p.getInventory().addItem(item.getItem());
                 p.sendMessage("§a§l[AH] §aSuccessfully purchased!");
