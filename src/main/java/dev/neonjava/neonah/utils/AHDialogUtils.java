@@ -18,18 +18,8 @@ import org.bukkit.entity.Player;
 import java.util.List;
 
 /**
- * AHDialogUtils - Re-implemented using the EXACT Mixed Pattern found in
- * NeonOrder's DeliveryConfirmDialog.java.
- * 
- * THE PATTERN (confirmed working for Bedrock in NeonOrder):
- * 1. CONFIRM button = Lambda action (DialogAction.customClick((v, player) -> {
- * ... }, ClickCallback.Options.builder().build()))
- * 2. CANCEL button = Key action
- * (DialogAction.customClick(Key.key("neonah:.../cancel"), null))
- * 3. Both buttons have Tooltips (Geyser may use these as metadata).
- * 4. "Confirm" is the FIRST argument in confirmation(), "Cancel" is the SECOND.
- * 
- * I will use a AHDialogListener to handle the Cancel key.
+ * AHDialogUtils - Updated with VERBOSE logging to identify why Bedrock buttons
+ * are failing even when matching the NeonOrder pattern.
  */
 @SuppressWarnings("UnstableApiUsage")
 public class AHDialogUtils {
@@ -55,19 +45,20 @@ public class AHDialogUtils {
                                                                                                         + " <white>in return"))))
                                                         .build())
                                         .type(DialogType.confirmation(
-                                                        // Button 1: CONFIRM (Pattern matched: Lambda + Tooltip)
                                                         ActionButton.builder(mm.deserialize("<green>✔ Confirm"))
                                                                         .tooltip(mm.deserialize(
                                                                                         "<green>Click to confirm purchase"))
                                                                         .action(DialogAction.customClick(
                                                                                         (view, audience) -> {
+                                                                                                Bukkit.getLogger().info(
+                                                                                                                "[AH-Debug] LAMBDA: Confirm Purchase fired for "
+                                                                                                                                + buyer.getName());
                                                                                                 processPurchase(buyer,
                                                                                                                 item);
                                                                                         },
                                                                                         ClickCallback.Options.builder()
                                                                                                         .build()))
                                                                         .build(),
-                                                        // Button 2: CANCEL (Pattern matched: Key + Tooltip)
                                                         ActionButton.builder(mm.deserialize("<red>✖ Cancel"))
                                                                         .tooltip(mm.deserialize(
                                                                                         "<red>Cancel and go back"))
@@ -75,6 +66,7 @@ public class AHDialogUtils {
                                                                                         null))
                                                                         .build()));
                 });
+                Bukkit.getLogger().info("[AH-Debug] Sending Buy Dialog to " + p.getName());
                 open(p, dialog);
         }
 
@@ -93,6 +85,9 @@ public class AHDialogUtils {
                                                                         .tooltip(mm.deserialize("<red>Remove from AH"))
                                                                         .action(DialogAction.customClick(
                                                                                         (view, audience) -> {
+                                                                                                Bukkit.getLogger().info(
+                                                                                                                "[AH-Debug] LAMBDA: Self Remove fired for "
+                                                                                                                                + seller.getName());
                                                                                                 processRemoval(seller,
                                                                                                                 item);
                                                                                         },
@@ -105,6 +100,7 @@ public class AHDialogUtils {
                                                                                         null))
                                                                         .build()));
                 });
+                Bukkit.getLogger().info("[AH-Debug] Sending Self Remove Dialog to " + p.getName());
                 open(p, dialog);
         }
 
@@ -120,6 +116,9 @@ public class AHDialogUtils {
                                                                         .tooltip(mm.deserialize("<red>Admins only"))
                                                                         .action(DialogAction.customClick(
                                                                                         (view, audience) -> {
+                                                                                                Bukkit.getLogger().info(
+                                                                                                                "[AH-Debug] LAMBDA: Admin Remove fired for "
+                                                                                                                                + admin.getName());
                                                                                                 AHManager.get().removeItem(
                                                                                                                 item);
                                                                                                 AHManager.get().markUnclaimed(
@@ -137,12 +136,12 @@ public class AHDialogUtils {
                                                                                         null))
                                                                         .build()));
                 });
+                Bukkit.getLogger().info("[AH-Debug] Sending Admin Dialog to " + p.getName());
                 open(p, dialog);
         }
 
         private static void open(Player p, Dialog d) {
-                // NeonOrder uses p.getScheduler().run() (instant)
-                p.getScheduler().run(NeonAH.get(), t -> p.showDialog(d), null);
+                p.getScheduler().run(dev.neonjava.neonah.NeonAH.get(), t -> p.showDialog(d), null);
         }
 
         public static void processPurchase(Player p, AHItem item) {
@@ -175,7 +174,7 @@ public class AHDialogUtils {
                 if (!AHManager.get().getItems().contains(item))
                         return;
                 if (p.getInventory().firstEmpty() == -1) {
-                        p.sendMessage("§cPROJECT_ROOT/Data/projects/ninesmp/order/neonah/src/main/java/dev/neonjava/neonah/utils/AHDialogUtils.javaInventory full! Cannot reclaim.");
+                        p.sendMessage("§cInventory full! Cannot reclaim.");
                         return;
                 }
                 AHManager.get().removeItem(item);

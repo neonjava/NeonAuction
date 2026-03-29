@@ -2,7 +2,7 @@ package dev.neonjava.neonah.listeners;
 
 import io.papermc.paper.connection.PlayerGameConnection;
 import io.papermc.paper.event.player.PlayerCustomClickEvent;
-import dev.neonjava.neonah.utils.AHDialogUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -14,8 +14,13 @@ public class AHDialogListener implements Listener {
     public void onDialogClick(PlayerCustomClickEvent e) {
         String idString = e.getIdentifier().asString();
 
-        // Pattern match: Only handle cancel keys via Key listener
-        // (Confirm is handled by the BiConsumer lambda in AHDialogUtils)
+        // GLOBAL DEBUG: Log EVERY click identifier received from any dialog
+        if (e.getCommonConnection() instanceof PlayerGameConnection con) {
+            Player p = con.getPlayer();
+            Bukkit.getLogger().info("[AH-Debug] Click received from " + p.getName() + " | Identifier: " + idString);
+        }
+
+        // Handle specific cancel keys (NeonOrder Mixed Pattern)
         if (idString.equals("neonah:buy/cancel") ||
                 idString.equals("neonah:remove/cancel") ||
                 idString.equals("neonah:admin/cancel")) {
@@ -24,7 +29,7 @@ public class AHDialogListener implements Listener {
                 return;
             final Player p = con.getPlayer();
 
-            // Just close the inventory on cancel
+            Bukkit.getLogger().info("[AH-Debug] Processing CANCEL key for " + p.getName());
             p.getScheduler().run(dev.neonjava.neonah.NeonAH.get(), t -> p.closeInventory(), null);
         }
     }
