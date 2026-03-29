@@ -166,7 +166,7 @@ public class AHMenuListener implements Listener {
                 AHManager.get().markUnclaimed(menu.getItem().getSeller(), menu.getItem().getItem());
                 player.sendMessage("§a§l[AH] §aListing force-removed.");
             }
-        } else if (slot == 15 || slot == 13) { // Cancel (Red) or Item (Optional)
+        } else if (slot == 15) { // Cancel (Red)
             // Go back to main menu
             new AHMainMenu(player, false).open(player);
         }

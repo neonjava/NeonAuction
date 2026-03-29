@@ -133,7 +133,8 @@ public class AHStorage {
     }
 
     public void recordHistory(UUID seller, UUID buyer, double price, ItemStack item) {
-        try (PreparedStatement ps = connection.prepareStatement("INSERT INTO history VALUES (?,?,?,?,?,?)")) {
+        String sql = "INSERT INTO history (id, seller, buyer, price, item_blob, sold_at) VALUES (?,?,?,?,?,?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, seller.toString());
             ps.setString(3, buyer.toString());
