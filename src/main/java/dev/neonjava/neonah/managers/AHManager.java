@@ -15,7 +15,7 @@ public class AHManager {
     public static class PendingAction {
         public final String type;
         public final AHItem item;
-        public volatile long shownAt = 0; // set when dialog packet is actually sent
+        public volatile long shownAt = Long.MAX_VALUE; // Sentinel: not yet shown
 
         public PendingAction(String type, AHItem item) {
             this.type = type;

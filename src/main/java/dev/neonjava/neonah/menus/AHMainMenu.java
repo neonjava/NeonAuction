@@ -20,11 +20,11 @@ public class AHMainMenu extends AHBaseMenu {
     private SortMode sortMode = SortMode.RECENT;
 
     // Price threshold for "high value" highlight (configurable)
-    private static final double HIGH_PRICE_THRESHOLD = 10_000.0;
+    private static final double HIGH_PRICE_THRESHOLD = 1_000.0;
 
     public enum SortMode {
         RECENT("§fMost Recent", Material.CLOCK),
-        LOW("§aLowest Price", Material.LIME_DYE),
+        LOW("§aLowest Price", Material.HOPPER),
         HIGH("§6Highest Price", Material.GOLD_NUGGET);
 
         public final String label;
