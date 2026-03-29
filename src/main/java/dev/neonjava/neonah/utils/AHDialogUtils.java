@@ -9,7 +9,6 @@ import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
-import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -18,35 +17,23 @@ import org.bukkit.entity.Player;
 import java.util.List;
 
 /**
- * NeonAH Dialog Utilities — Hybrid Java+Bedrock approach
+ * AHDialogUtils - Re-implemented using the EXACT NeonOrder pattern from
+ * ManageOrderDialog.java.
  *
- * BEDROCK (Geyser) FINDINGS:
- * - BiConsumer lambdas (customClick with options) are NOT called for Bedrock
- * players
- * - Key-based buttons (customClick with Key) ARE received via
- * PlayerCustomClickEvent
- * - Geyser SWAPS button order: firstArg in confirmation() = visual CANCEL,
- * secondArg = visual CONFIRM
+ * This pattern uses:
+ * 1. Lambda for the Confirm button (customClick BiConsumer)
+ * 2. NO ACTION (empty action) for the Cancel button
+ * 3. NO KEY listener for confirm (letting Paper handle it)
  *
- * SOLUTION:
- * - Store pending action in AHManager before opening dialog
- * - Use Keys for buttons (swapped order for Bedrock)
- * - AHDialogListener handles neonah:confirm → execute pending, neonah:cancel →
- * close only
+ * NeonOrder's ManageOrderDialog.java uses this and works on Bedrock.
  */
 @SuppressWarnings("UnstableApiUsage")
 public class AHDialogUtils {
         private static final MiniMessage mm = MiniMessage.miniMessage();
 
-        // Simple keys — no slashes, no dynamic content — Geyser sends these reliably
-        public static final Key KEY_CONFIRM = Key.key("neonah:confirm");
-        public static final Key KEY_CANCEL = Key.key("neonah:cancel");
-
         public static void showBuyDialog(Player p, AHItem item) {
-                // Store pending BEFORE opening dialog
-                AHManager.get().setPending(p.getUniqueId(), "BUY", item);
-                Bukkit.getLogger().info("[AH-Debug] showBuyDialog — pending set for " + p.getName()
-                                + " | item=" + item.getItem().getType() + " | price=" + item.getPrice());
+                // We use a final reference for the player to use inside the lambda
+                final Player playerToPay = p;
 
                 Dialog dialog = Dialog.create(builder -> builder.empty()
                                 .base(DialogBase.builder(mm.deserialize("<white>Confirm Purchase"))
@@ -60,25 +47,25 @@ public class AHDialogUtils {
                                                                                                                 item.getPrice())
                                                                                                 + " <white>in return"))))
                                                 .build())
-                                /**
-                                 * IMPORTANT — Bedrock button order is SWAPPED vs Java:
-                                 * - firstArg → Bedrock shows as CANCEL button (sends KEY_CANCEL)
-                                 * - secondArg → Bedrock shows as CONFIRM button (sends KEY_CONFIRM)
-                                 */
                                 .type(DialogType.confirmation(
-                                                ActionButton.builder(mm.deserialize("<red>✖ Cancel"))
-                                                                .action(DialogAction.customClick(KEY_CANCEL, null))
-                                                                .build(),
+                                                // Button 1: Confirm (uses lambda, just like NeonOrder's Deliver/Manage
+                                                // dialogs)
                                                 ActionButton.builder(mm.deserialize("<green>✔ Confirm"))
-                                                                .action(DialogAction.customClick(KEY_CONFIRM, null))
+                                                                .action(DialogAction.customClick((view, audience) -> {
+                                                                        // Using the final variable from the outer
+                                                                        // scope, just like NeonOrder
+                                                                        processPurchase(playerToPay, item);
+                                                                }, ClickCallback.Options.builder().build()))
+                                                                .build(),
+                                                // Button 2: Cancel (no action, just closes, just like NeonOrder)
+                                                ActionButton.builder(mm.deserialize("<red>✖ Cancel"))
                                                                 .build())));
+
                 open(p, dialog);
         }
 
         public static void showSelfRemoveDialog(Player p, AHItem item) {
-                AHManager.get().setPending(p.getUniqueId(), "REMOVE", item);
-                Bukkit.getLogger().info("[AH-Debug] showSelfRemoveDialog — pending set for " + p.getName());
-
+                final Player seller = p;
                 Dialog dialog = Dialog.create(builder -> builder.empty()
                                 .base(DialogBase.builder(mm.deserialize("<white>Cancel Your Listing?"))
                                                 .body(List.of(
@@ -89,19 +76,18 @@ public class AHDialogUtils {
                                                                                 "<white>The item will be returned to your inventory."))))
                                                 .build())
                                 .type(DialogType.confirmation(
-                                                ActionButton.builder(mm.deserialize("<gray>✖ Keep Listing"))
-                                                                .action(DialogAction.customClick(KEY_CANCEL, null))
-                                                                .build(),
                                                 ActionButton.builder(mm.deserialize("<red>✔ Remove Listing"))
-                                                                .action(DialogAction.customClick(KEY_CONFIRM, null))
+                                                                .action(DialogAction.customClick((view, audience) -> {
+                                                                        processRemoval(seller, item);
+                                                                }, ClickCallback.Options.builder().build()))
+                                                                .build(),
+                                                ActionButton.builder(mm.deserialize("<gray>✖ Keep Listing"))
                                                                 .build())));
                 open(p, dialog);
         }
 
-        public static void showAdminRemoveDialog(Player admin, AHItem item) {
-                AHManager.get().setPending(admin.getUniqueId(), "ADMIN", item);
-                Bukkit.getLogger().info("[AH-Debug] showAdminRemoveDialog — pending set for " + admin.getName());
-
+        public static void showAdminRemoveDialog(Player p, AHItem item) {
+                final Player admin = p;
                 Dialog dialog = Dialog.create(builder -> builder.empty()
                                 .base(DialogBase.builder(mm.deserialize("<red>Admin: Force Remove Listing?"))
                                                 .body(List.of(
@@ -110,63 +96,41 @@ public class AHDialogUtils {
                                                                 DialogBody.item(item.getItem()).build()))
                                                 .build())
                                 .type(DialogType.confirmation(
-                                                ActionButton.builder(mm.deserialize("<gray>✖ Cancel"))
-                                                                .action(DialogAction.customClick(KEY_CANCEL, null))
-                                                                .build(),
                                                 ActionButton.builder(mm.deserialize("<red>✔ Confirm Removal"))
-                                                                .action(DialogAction.customClick(KEY_CONFIRM, null))
+                                                                .action(DialogAction.customClick((view, audience) -> {
+                                                                        AHManager.get().removeItem(item);
+                                                                        AHManager.get().markUnclaimed(item.getSeller(),
+                                                                                        item.getItem());
+                                                                        admin.sendMessage(
+                                                                                        "§a§l[AH] §aListing removed successfully.");
+                                                                }, ClickCallback.Options.builder().build()))
+                                                                .build(),
+                                                ActionButton.builder(mm.deserialize("<gray>✖ Cancel"))
                                                                 .build())));
-                open(admin, dialog);
+                open(p, dialog);
         }
 
-        /**
-         * Opens dialog with a 5-tick delay after inventory close.
-         *
-         * WHY: Without a delay, Geyser auto-fires neonah:confirm immediately because
-         * the Bedrock client hasn't finished processing the inventory-close packet
-         * before the modal form packet arrives. The delay gives the client time to
-         * reset.
-         *
-         * Inventory is closed in AHMenuListener BEFORE this is called.
-         */
         private static void open(Player p, Dialog d) {
-                Bukkit.getLogger().info("[AH-Debug] open() — scheduling showDialog in 5 ticks for " + p.getName());
-                p.getScheduler().runDelayed(NeonAH.get(), t -> {
-                        Bukkit.getLogger().info("[AH-Debug] showDialog() sent to " + p.getName());
-                        p.showDialog(d);
-                        // Stamp the exact time dialog packet was sent so listener can apply grace
-                        // window
-                        AHManager.PendingAction pa = AHManager.get().getPending(p.getUniqueId());
-                        if (pa != null)
-                                pa.shownAt = System.currentTimeMillis();
-                }, null, 5L);
+                // NeonOrder uses run() WITHOUT a delay for its Confirmation dialogs
+                p.getScheduler().run(NeonAH.get(), t -> p.showDialog(d), null);
         }
-
-        // ─── Purchase / Removal logic ─────────────────────────────────────────────
 
         public static void processPurchase(Player p, AHItem item) {
-                Bukkit.getLogger().info("[AH-Debug] processPurchase START — buyer=" + p.getName()
-                                + " | item=" + item.getItem().getType() + " | price=" + item.getPrice());
-
                 if (!AHManager.get().getItems().contains(item)) {
-                        Bukkit.getLogger().warning("[AH-Debug] Item no longer in active list!");
                         p.sendMessage("§c§l[AH] §cItem no longer available!");
                         return;
                 }
                 if (p.getInventory().firstEmpty() == -1) {
-                        Bukkit.getLogger().info("[AH-Debug] Buyer inventory full!");
                         p.sendMessage("§c§l[AH] §cYour inventory is full! Cannot buy.");
                         p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                         return;
                 }
                 double balance = NeonAH.getEcon().getBalance(p);
                 if (balance < item.getPrice()) {
-                        Bukkit.getLogger().info("[AH-Debug] Insufficient funds! balance=" + balance);
                         p.sendMessage("§c§l[AH] §cInsufficient funds!");
                         return;
                 }
 
-                Bukkit.getLogger().info("[AH-Debug] All checks passed — executing transaction");
                 NeonAH.getEcon().withdrawPlayer(p, item.getPrice());
                 NeonAH.getEcon().depositPlayer(Bukkit.getOfflinePlayer(item.getSeller()), item.getPrice());
                 AHManager.get().recordSale(item.getSeller(), p.getUniqueId(), item.getPrice(),
@@ -175,11 +139,9 @@ public class AHDialogUtils {
                 p.getInventory().addItem(item.getItem());
                 p.sendMessage("§a§l[AH] §aSuccessfully purchased for §e" + AHFormatter.formatPrice(item.getPrice()));
                 p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-                Bukkit.getLogger().info("[AH-Debug] processPurchase COMPLETE for " + p.getName());
         }
 
         public static void processRemoval(Player p, AHItem item) {
-                Bukkit.getLogger().info("[AH-Debug] processRemoval START — seller=" + p.getName());
                 if (!AHManager.get().getItems().contains(item))
                         return;
                 if (p.getInventory().firstEmpty() == -1) {
@@ -189,6 +151,5 @@ public class AHDialogUtils {
                 AHManager.get().removeItem(item);
                 p.getInventory().addItem(item.getItem());
                 p.sendMessage("§a§l[AH] §aListing removed and item returned!");
-                Bukkit.getLogger().info("[AH-Debug] processRemoval COMPLETE for " + p.getName());
         }
 }

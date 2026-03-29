@@ -36,9 +36,6 @@ public class NeonAH extends JavaPlugin {
 
         // AHMenuListener — chest GUI clicks
         getServer().getPluginManager().registerEvents(new AHMenuListener(), this);
-        // AHDialogListener — handles neonah:confirm / neonah:cancel key events from
-        // Bedrock+Java
-        getServer().getPluginManager().registerEvents(new AHDialogListener(), this);
 
         // Periodically check for expired items
         Bukkit.getAsyncScheduler().runAtFixedRate(this, t -> AHManager.get().checkExpiry(), 1, 5,
