@@ -3,6 +3,7 @@ package dev.neonjava.neonah.utils;
 import dev.neonjava.neonah.NeonAH;
 import dev.neonjava.neonah.models.AHItem;
 import dev.neonjava.neonah.managers.AHManager;
+import dev.neonjava.neonah.menus.AHConfirmMenu;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.DialogBase;
@@ -12,18 +13,17 @@ import io.papermc.paper.registry.data.dialog.type.DialogType;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BlockStateMeta;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * AHDialogUtils - 100% KEY-BASED PATTERN.
- * 
- * After extensive testing, we've found that BiConsumer Lambdas in Paper Dialogs
- * are unreliable for Bedrock players via Geyser on this server.
- * 
- * We have switched to a 100% Key-based system where every action is handled
- * by the AHDialogListener. This is the ultimate fix for Bedrock compatibility.
+ * AHDialogUtils - Paper Dialog API utility.
  */
 @SuppressWarnings("UnstableApiUsage")
 public class AHDialogUtils {
@@ -41,13 +41,7 @@ public class AHDialogUtils {
                 final Dialog dialog = Dialog.create(builder -> {
                         builder.empty()
                                         .base(DialogBase.builder(mm.deserialize("<white>Confirm Purchase"))
-                                                        .body(List.of(
-                                                                        DialogBody.plainMessage(mm.deserialize(
-                                                                                        "<white>You will pay <green>"
-                                                                                                        + AHFormatter.formatPrice(
-                                                                                                                        item.getPrice())
-                                                                                                        + " <white>for:")),
-                                                                        DialogBody.item(item.getItem()).build()))
+                                                        .body(buildBody(item))
                                                         .build())
                                         .type(DialogType.confirmation(
                                                         ActionButton.builder(mm.deserialize("<green>✔ Confirm"))
@@ -70,7 +64,7 @@ public class AHDialogUtils {
                 final Dialog dialog = Dialog.create(builder -> {
                         builder.empty()
                                         .base(DialogBase.builder(mm.deserialize("<white>Remove Listing?"))
-                                                        .body(List.of(DialogBody.item(item.getItem()).build()))
+                                                        .body(buildBody(item))
                                                         .build())
                                         .type(DialogType.confirmation(
                                                         ActionButton.builder(mm.deserialize("<red>✔ Remove"))
@@ -90,7 +84,7 @@ public class AHDialogUtils {
                 final Dialog dialog = Dialog.create(builder -> {
                         builder.empty()
                                         .base(DialogBase.builder(mm.deserialize("<red>Admin: Force Remove?"))
-                                                        .body(List.of(DialogBody.item(item.getItem()).build()))
+                                                        .body(buildBody(item))
                                                         .build())
                                         .type(DialogType.confirmation(
                                                         ActionButton.builder(mm.deserialize("<red>✔ Force Remove"))
@@ -103,6 +97,33 @@ public class AHDialogUtils {
                                                                         .build()));
                 });
                 open(p, dialog);
+        }
+
+        private static List<DialogBody> buildBody(AHItem item) {
+                List<DialogBody> bodies = new ArrayList<>();
+                bodies.add(DialogBody.plainMessage(mm.deserialize("<white>Action for:")));
+                bodies.add(DialogBody.item(item.getItem()).build());
+
+                // Add Price if it's a buy dialog (we can infer from context usually, but here
+                // generic)
+                bodies.add(DialogBody.plainMessage(
+                                mm.deserialize("<white>Price: <yellow>" + AHFormatter.formatPrice(item.getPrice()))));
+
+                // Shulker Preview in Dialog Body!
+                if (AHConfirmMenu.isShulker(item.getItem())) {
+                        if (item.getItem().getItemMeta() instanceof BlockStateMeta bsm) {
+                                if (bsm.getBlockState() instanceof ShulkerBox box) {
+                                        bodies.add(DialogBody.plainMessage(
+                                                        mm.deserialize("<gray><italic>Previewing contents below:")));
+                                        for (ItemStack sub : box.getInventory().getContents()) {
+                                                if (sub != null && sub.getType() != Material.AIR) {
+                                                        bodies.add(DialogBody.item(sub).build());
+                                                }
+                                        }
+                                }
+                        }
+                }
+                return bodies;
         }
 
         public static void processPurchase(Player p, AHItem item) {
