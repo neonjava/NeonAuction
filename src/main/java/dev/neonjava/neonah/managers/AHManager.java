@@ -1,5 +1,6 @@
 package dev.neonjava.neonah.managers;
 
+import dev.neonjava.neonah.models.AHHistoryItem;
 import dev.neonjava.neonah.models.AHItem;
 import org.bukkit.inventory.ItemStack;
 import java.util.*;
@@ -71,7 +72,7 @@ public class AHManager {
         storage.recordHistory(s, b, p, n);
     }
 
-    public List<String> getHistoryStrings(UUID p) {
+    public List<AHHistoryItem> getHistory(UUID p) {
         return storage.getHistory(p);
     }
 

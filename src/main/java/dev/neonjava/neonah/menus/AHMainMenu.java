@@ -37,7 +37,8 @@ public class AHMainMenu extends AHBaseMenu {
     }
 
     public AHMainMenu(Player player, boolean admin) {
-        super(54, admin ? "§4Admin Auction House" : "§6§lAuction House");
+        super(54, admin ? "§4§l" + AHFormatter.toSmallCaps("Admin Auction House")
+                : "§6§l" + AHFormatter.toSmallCaps("Auction House"));
         this.player = player;
         this.admin = admin;
         // Clear any stale pending actions when opening fresh
@@ -105,29 +106,31 @@ public class AHMainMenu extends AHBaseMenu {
             inventory.setItem(i, create(Material.BLACK_STAINED_GLASS_PANE, " "));
 
         // Slot 45 – Sort button (icon changes with mode)
-        ItemStack sortIcon = create(sortMode.icon, "§6Sort: " + sortMode.label,
-                "§7Click to cycle: Recent → Low → High");
-        inventory.setItem(45, sortIcon);
+        inventory.setItem(45, create(sortMode.icon, "§e§l" + AHFormatter.toSmallCaps("Sort: " + sortMode.label),
+                "§7Click to cycle: Recent → Low → High"));
 
-        // Slot 47 – Refresh
-        inventory.setItem(47, create(Material.NETHER_STAR, "§b§lRefresh", "§7Click to reload listings."));
+        // Slot 46 – Refresh (Moved beside Sorter)
+        inventory.setItem(46, create(Material.NETHER_STAR, "§b§l" + AHFormatter.toSmallCaps("Refresh"),
+                "§7Click to reload listings."));
 
         // Slot 48 – Prev page
         if (page > 0)
-            inventory.setItem(48, create(Material.ARROW, "§ePrevious Page"));
+            inventory.setItem(48, create(Material.ARROW, "§e" + AHFormatter.toSmallCaps("Previous Page")));
 
         // Slot 49 – Close
-        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "§c§lClose Menu"));
+        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "§c§l" + AHFormatter.toSmallCaps("Close Menu")));
 
         // Slot 50 – Next page
         if (end < items.size())
-            inventory.setItem(50, create(Material.ARROW, "§eNext Page"));
+            inventory.setItem(50, create(Material.ARROW, "§e" + AHFormatter.toSmallCaps("Next Page")));
 
         // Slot 52 – My Listings
-        inventory.setItem(52, create(Material.CHEST, "§6My Listings & Returns", "§7View or reclaim your items."));
+        inventory.setItem(52, create(Material.CHEST, "§6§l" + AHFormatter.toSmallCaps("My Listings"),
+                "§7View or reclaim your items."));
 
         // Slot 53 – History
-        inventory.setItem(53, create(Material.ENDER_CHEST, "§5Auction History", "§7View your recent sales & buys."));
+        inventory.setItem(53, create(Material.ENDER_CHEST, "§5§l" + AHFormatter.toSmallCaps("Auction History"),
+                "§7View your recent sales & buys."));
     }
 
     public void cycleSort() {

@@ -2,6 +2,7 @@ package dev.neonjava.neonah.menus;
 
 import dev.neonjava.neonah.managers.AHManager;
 import dev.neonjava.neonah.models.AHItem;
+import dev.neonjava.neonah.utils.AHFormatter;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -10,11 +11,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * AHMyListingsMenu - My Listings & Returns.
+ * Shows active listings and expired items for reclamation.
+ */
 public class AHMyListingsMenu extends AHBaseMenu {
     private final Player player;
 
     public AHMyListingsMenu(Player player) {
-        super(54, "My Listings & Returns");
+        super(54, "§6§l" + AHFormatter.toSmallCaps("My Listings"));
         this.player = player;
     }
 
@@ -28,7 +33,7 @@ public class AHMyListingsMenu extends AHBaseMenu {
         inventory.clear();
         UUID uuid = player.getUniqueId();
 
-        // Active Listings
+        // Active Listings (Top 27 slots)
         List<AHItem> active = AHManager.get().getItems().stream()
                 .filter(i -> i.getSeller().equals(uuid))
                 .toList();
@@ -40,16 +45,16 @@ public class AHMyListingsMenu extends AHBaseMenu {
             if (meta != null) {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
                 lore.add("§8§m                    ");
-                lore.add("§7Type: §a§lACTIVE");
-                lore.add("§7Price: §e" + item.getPrice() + "₹");
-                lore.add("§cClick to cancel listing");
+                lore.add("§7Type: §a§l" + AHFormatter.toSmallCaps("Active"));
+                lore.add("§7Price: §e" + AHFormatter.formatPrice(item.getPrice()));
+                lore.add("§c▶ Click to cancel listing");
                 meta.setLore(lore);
                 stack.setItemMeta(meta);
             }
             inventory.setItem(i, stack);
         }
 
-        // Unclaimed Items (Expired/Removed)
+        // Unclaimed Items (Middle 18 slots)
         List<ItemStack> unclaimed = AHManager.get().getUnclaimed(uuid);
         for (int i = 0; i < Math.min(unclaimed.size(), 18); i++) {
             ItemStack stack = unclaimed.get(i).clone();
@@ -57,8 +62,8 @@ public class AHMyListingsMenu extends AHBaseMenu {
             if (meta != null) {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
                 lore.add("§8§m                    ");
-                lore.add("§7Type: §c§lUNLISTED (RECLAIM)");
-                lore.add("§eClick to reclaim items");
+                lore.add("§7Type: §c§l" + AHFormatter.toSmallCaps("Unlisted / Reclaim"));
+                lore.add("§e▶ Click to reclaim all items");
                 meta.setLore(lore);
                 stack.setItemMeta(meta);
             }
@@ -68,6 +73,8 @@ public class AHMyListingsMenu extends AHBaseMenu {
         // Bottom Bar
         for (int i = 45; i < 54; i++)
             inventory.setItem(i, create(Material.BLACK_STAINED_GLASS_PANE, " "));
-        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "§c§lBack to AH"));
+
+        // Back button
+        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "§c§l" + AHFormatter.toSmallCaps("Back to AH")));
     }
 }

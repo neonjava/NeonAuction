@@ -1,6 +1,7 @@
 package dev.neonjava.neonah.managers;
 
 import dev.neonjava.neonah.NeonAH;
+import dev.neonjava.neonah.models.AHHistoryItem;
 import dev.neonjava.neonah.models.AHItem;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.io.BukkitObjectInputStream;
@@ -138,18 +139,20 @@ public class AHStorage {
         }
     }
 
-    public List<String> getHistory(UUID player) {
-        List<String> list = new ArrayList<>();
+    public List<AHHistoryItem> getHistory(UUID player) {
+        List<AHHistoryItem> list = new ArrayList<>();
         try (PreparedStatement ps = connection.prepareStatement(
-                "SELECT * FROM history WHERE seller = ? OR buyer = ? ORDER BY sold_at DESC LIMIT 50")) {
+                "SELECT * FROM history WHERE seller = ? OR buyer = ? ORDER BY sold_at DESC LIMIT 100")) {
             ps.setString(1, player.toString());
             ps.setString(2, player.toString());
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                boolean sold = rs.getString("seller").equals(player.toString());
-                String type = sold ? "§c[SOLD]" : "§a[BOUGHT]";
-                list.add(type + " §f" + rs.getString("item_name") + " §e" + rs.getDouble("price") + "₹ §7("
-                        + new java.util.Date(rs.getLong("sold_at")).toString() + ")");
+                list.add(new AHHistoryItem(
+                        UUID.fromString(rs.getString("seller")),
+                        UUID.fromString(rs.getString("buyer")),
+                        rs.getDouble("price"),
+                        rs.getString("item_name"),
+                        rs.getLong("sold_at")));
             }
         } catch (SQLException e) {
             e.printStackTrace();

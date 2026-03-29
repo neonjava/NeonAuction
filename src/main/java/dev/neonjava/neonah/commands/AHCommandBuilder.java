@@ -32,19 +32,28 @@ public class AHCommandBuilder {
                     return 1;
                 })
                 .then(Commands.literal("sell")
-                        .then(Commands.argument("price", DoubleArgumentType.doubleArg(1.0))
+                        .then(Commands.argument("price_str", StringArgumentType.string())
                                 .executes(ctx -> {
                                     if (!(ctx.getSource().getExecutor() instanceof Player p))
                                         return 0;
-                                    double price = DoubleArgumentType.getDouble(ctx, "price");
+                                    String priceInput = StringArgumentType.getString(ctx, "price_str");
+                                    double price = dev.neonjava.neonah.utils.AHFormatter.parsePrice(priceInput);
+
+                                    if (price < 1.0) {
+                                        p.sendMessage("§cInvalid price! Use a number or suffixes like 100k, 1m, 1b.");
+                                        return 0;
+                                    }
+
                                     ItemStack item = p.getInventory().getItemInMainHand();
                                     if (item.getType() == Material.AIR) {
                                         p.sendMessage("§cYou must hold an item to sell it!");
                                         return 0;
                                     }
+
                                     AHManager.get().addItem(new AHItem(p.getUniqueId(), item.clone(), price));
                                     p.getInventory().setItemInMainHand(null);
-                                    p.sendMessage("§a§l[AH] §aItem listed for " + price + "₹");
+                                    p.sendMessage("§a§l[AH] §aItem listed for "
+                                            + dev.neonjava.neonah.utils.AHFormatter.formatPrice(price));
                                     return 1;
                                 })))
                 .build();
@@ -66,8 +75,15 @@ public class AHCommandBuilder {
                                     if (!(ctx.getSource().getExecutor() instanceof Player sender))
                                         return 0;
 
-                                    sender.sendMessage("§b§l[AH-Admin] §7History for " + target + ":");
-                                    AHManager.get().getHistoryStrings(op.getUniqueId()).forEach(sender::sendMessage);
+                                    sender.sendMessage("§b§l[AH-Admin] "
+                                            + dev.neonjava.neonah.utils.AHFormatter.toSmallCaps("History for " + target)
+                                            + ":");
+                                    AHManager.get().getHistory(op.getUniqueId()).forEach(hi -> {
+                                        boolean sold = hi.getSeller().equals(op.getUniqueId());
+                                        String type = sold ? "§c[SOLD]" : "§a[BOUGHT]";
+                                        sender.sendMessage(
+                                                type + " §f" + hi.getItemName() + " §e" + hi.getPrice() + "₹");
+                                    });
                                     return 1;
                                 })))
                 .build();

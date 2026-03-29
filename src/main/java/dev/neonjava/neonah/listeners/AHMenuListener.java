@@ -39,9 +39,8 @@ public class AHMenuListener implements Listener {
 
         if (holder instanceof AHMainMenu menu) {
             handleMain(player, menu, slot);
-        } else if (holder instanceof AHHistoryMenu) {
-            if (slot == 49)
-                new AHMainMenu(player, false).open(player);
+        } else if (holder instanceof AHHistoryMenu menu) {
+            handleHistory(player, menu, slot);
         } else if (holder instanceof AHMyListingsMenu menu) {
             handleListings(player, menu, slot);
         } else if (holder instanceof AHConfirmMenu menu) {
@@ -55,7 +54,7 @@ public class AHMenuListener implements Listener {
                 menu.cycleSort();
                 return;
             }
-            case 47 -> {
+            case 46 -> {
                 menu.refresh();
                 return;
             }
@@ -108,6 +107,14 @@ public class AHMenuListener implements Listener {
             } else {
                 AHDialogUtils.showBuyDialog(player, item);
             }
+        }
+    }
+
+    private void handleHistory(Player player, AHHistoryMenu menu, int slot) {
+        switch (slot) {
+            case 48 -> menu.prev();
+            case 49 -> new AHMainMenu(player, false).open(player);
+            case 50 -> menu.next();
         }
     }
 
