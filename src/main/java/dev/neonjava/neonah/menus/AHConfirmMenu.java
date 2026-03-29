@@ -3,43 +3,78 @@ package dev.neonjava.neonah.menus;
 import dev.neonjava.neonah.models.AHItem;
 import lombok.Getter;
 import org.bukkit.Material;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BlockStateMeta;
 
 import java.util.stream.IntStream;
 
 /**
- * AHConfirmMenu - A Bedrock-friendly Chest GUI for confirming
- * purchases/removals.
+ * AHConfirmMenu - Enhanced with Shulker Box Previews.
  */
 @Getter
 public class AHConfirmMenu extends AHBaseMenu {
     private final String type;
     private final AHItem item;
+    private final boolean isShulker;
 
     public AHConfirmMenu(String type, AHItem item) {
-        super(27, type.equals("buy") ? "§0Confirm Purchase" : "§0Confirm Removal");
+        // Use 54 slots (6 rows) if it's a shulker preview, 27 slots (3 rows) otherwise.
+        super(isShulker(item.getItem()) ? 54 : 27,
+                (type.equals("buy") ? "§0Confirm Purchase" : "§0Confirm Removal")
+                        + (isShulker(item.getItem()) ? " (Preview)" : ""));
         this.type = type;
         this.item = item;
+        this.isShulker = isShulker(item.getItem());
         render();
     }
 
     private void render() {
-        // Fill empty background
+        inventory.clear();
         ItemStack bg = create(Material.BLACK_STAINED_GLASS_PANE, " ");
-        IntStream.range(0, 27).forEach(i -> inventory.setItem(i, bg));
+        IntStream.range(0, inventory.getSize()).forEach(i -> inventory.setItem(i, bg));
 
-        // Slot 11: Confirm (Lime)
-        inventory.setItem(11, create(Material.LIME_STAINED_GLASS_PANE,
-                type.equals("buy") ? "§a§lConfirm Purchase" : "§c§lConfirm Removal",
+        // Layout adapts based on size
+        int confirmSlot = isShulker ? 11 : 11;
+        int itemSlot = isShulker ? 13 : 13;
+        int cancelSlot = isShulker ? 15 : 15;
+
+        // Action Buttons
+        inventory.setItem(confirmSlot, create(Material.LIME_STAINED_GLASS_PANE,
+                type.equals("buy") ? "§a§l✔ Confirm Purchase" : "§c§l✔ Confirm Removal",
                 "§7Click to process."));
 
-        // Slot 13: Auction Item
-        inventory.setItem(13, item.getItem());
+        inventory.setItem(itemSlot, item.getItem());
 
-        // Slot 15: Cancel (Red)
-        inventory.setItem(15, create(Material.RED_STAINED_GLASS_PANE, "§c§lCancel",
+        inventory.setItem(cancelSlot, create(Material.RED_STAINED_GLASS_PANE, "§c§l✖ Cancel",
                 "§7Click to go back."));
+
+        // Shulker Contents (Rows 3, 4, 5)
+        if (isShulker && item.getItem().getItemMeta() instanceof BlockStateMeta bsm) {
+            if (bsm.getBlockState() instanceof ShulkerBox box) {
+                ItemStack[] contents = box.getInventory().getContents();
+                // Start at slot 18 (Row 3)
+                for (int i = 0; i < 27; i++) {
+                    if (contents[i] != null && contents[i].getType() != Material.AIR) {
+                        inventory.setItem(18 + i, contents[i]);
+                    } else {
+                        inventory.setItem(18 + i, create(Material.LIGHT_GRAY_STAINED_GLASS_PANE, " "));
+                    }
+                }
+
+                // Add Lore hint for preview
+                inventory.setItem(4,
+                        create(Material.BOOK, "§d§lShulker Box Contents", "§7Below is a live preview of the box."));
+            }
+        }
+    }
+
+    public static boolean isShulker(ItemStack item) {
+        if (item == null)
+            return false;
+        String name = item.getType().name();
+        return name.contains("SHULKER_BOX");
     }
 
     @Override
