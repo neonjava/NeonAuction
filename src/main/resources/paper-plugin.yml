@@ -1,0 +1,11 @@
+name: NeonAH
+version: ${version}
+main: dev.neonjava.neonah.NeonAH
+api-version: '1.21'
+description: A powerful Auction plugin with Bedrock support.
+author: NeonJava
+dependencies:
+  server:
+    Vault:
+      load: BEFORE
+      required: true
