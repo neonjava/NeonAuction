@@ -127,17 +127,28 @@ public class AHMenuListener implements Listener {
     }
 
     private void handleListings(Player player, AHMyListingsMenu menu, int slot) {
+        if (slot == 45)
+            return; // Status info
+        if (slot == 48) {
+            menu.prev();
+            return;
+        }
         if (slot == 49) {
             new AHMainMenu(player, false).open(player);
+            return;
+        }
+        if (slot == 50) {
+            menu.next();
             return;
         }
 
         if (slot < 27) {
             List<AHItem> active = AHManager.get().getItems().stream()
                     .filter(i -> i.getSeller().equals(player.getUniqueId())).toList();
-            if (slot < active.size()) {
+            int index = menu.getPage() * 27 + slot;
+            if (index < active.size()) {
                 player.closeInventory();
-                AHDialogUtils.showSelfRemoveDialog(player, active.get(slot));
+                AHDialogUtils.showSelfRemoveDialog(player, active.get(index));
             }
         } else if (slot >= 27 && slot < 45) {
             List<ItemStack> unclaimed = AHManager.get().getUnclaimed(player.getUniqueId());
