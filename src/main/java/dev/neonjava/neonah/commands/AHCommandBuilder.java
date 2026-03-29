@@ -64,6 +64,21 @@ public class AHCommandBuilder {
 
                                     AHManager.get().addItem(new AHItem(p.getUniqueId(), item.clone(), price));
                                     p.getInventory().setItemInMainHand(null);
+
+                                    // Broadcast new auction
+                                    Bukkit.broadcast(
+                                            net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+                                                    "<gold><bold>[AH] <white>" + p.getName()
+                                                            + " <gray>has listed an <white><item> <gray>for <yellow>"
+                                                            + AHFormatter.formatPrice(price) + "!",
+                                                    net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+                                                            .component("item", (item.getItemMeta() != null
+                                                                    && item.getItemMeta().hasDisplayName()
+                                                                            ? item.getItemMeta().displayName()
+                                                                            : net.kyori.adventure.text.Component
+                                                                                    .translatable(item.getType()
+                                                                                            .translationKey())))));
+
                                     p.sendMessage("§a§l[AH] §aItem listed for "
                                             + dev.neonjava.neonah.utils.AHFormatter.formatPrice(price));
                                     return 1;
