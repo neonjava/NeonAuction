@@ -30,6 +30,6 @@ public class AHHistoryMenu extends AHBaseMenu {
         // Bottom Bar
         for (int i = 45; i < 54; i++)
             inventory.setItem(i, create(Material.BLACK_STAINED_GLASS_PANE, " "));
-        inventory.setItem(49, create(Material.ARROW, "§eBack to AH"));
+        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "§c§lBack to AH"));
     }
 }

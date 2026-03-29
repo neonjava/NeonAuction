@@ -117,7 +117,7 @@ public class AHMainMenu extends AHBaseMenu {
             inventory.setItem(48, create(Material.ARROW, "§ePrevious Page"));
 
         // Slot 49 – Close
-        inventory.setItem(49, create(Material.BARRIER, "§c§lClose Menu"));
+        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "§c§lClose Menu"));
 
         // Slot 50 – Next page
         if (end < items.size())
