@@ -4,6 +4,10 @@ import dev.neonjava.neonah.commands.AHCommandBuilder;
 import dev.neonjava.neonah.managers.AHManager;
 import dev.neonjava.neonah.listeners.AHMenuListener;
 import dev.neonjava.neonah.listeners.AHDialogListener;
+import dev.neonjava.neonah.utils.SignGUI;
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -16,8 +20,21 @@ public class NeonAH extends JavaPlugin {
     private static Economy economy;
 
     @Override
+    public void onLoad() {
+        // Initialize PacketEvents (matching NeonOrder for Bedrock stability)
+        PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
+        PacketEvents.getAPI().load();
+
+        PacketEvents.getAPI().getEventManager().registerListener(
+                new SignGUI(this), PacketListenerPriority.NORMAL);
+    }
+
+    @Override
     public void onEnable() {
         instance = this;
+
+        // Initialize PacketEvents API
+        PacketEvents.getAPI().init();
 
         if (!setupEconomy()) {
             Bukkit.getLogger().severe("NeonAH could not find Vault economy provider!");
@@ -43,11 +60,13 @@ public class NeonAH extends JavaPlugin {
         Bukkit.getAsyncScheduler().runAtFixedRate(this, t -> AHManager.get().checkExpiry(), 1, 5,
                 java.util.concurrent.TimeUnit.MINUTES);
 
-        Bukkit.getLogger().info("NeonAH v" + getDescription().getVersion() + " (Fresh Clean Start) Loaded!");
+        Bukkit.getLogger().info("NeonAH v" + getDescription().getVersion() + " (with PacketEvents) Loaded!");
     }
 
     @Override
     public void onDisable() {
+        // Shut down PacketEvents
+        PacketEvents.getAPI().terminate();
         AHManager.get().shutdown();
     }
 

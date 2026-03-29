@@ -6,6 +6,9 @@ description: A powerful Auction plugin with Bedrock support.
 author: NeonJava
 dependencies:
   server:
+    packetevents:
+      load: BEFORE
+      required: true
     Vault:
       load: BEFORE
       required: true
