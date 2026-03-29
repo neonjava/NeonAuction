@@ -1,52 +1,49 @@
 package dev.neonjava.neonah.menus;
 
 import dev.neonjava.neonah.models.AHItem;
+import lombok.Getter;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import java.util.List;
 
+import java.util.stream.IntStream;
+
+/**
+ * AHConfirmMenu - A Bedrock-friendly Chest GUI for confirming
+ * purchases/removals.
+ */
+@Getter
 public class AHConfirmMenu extends AHBaseMenu {
+    private final String type;
     private final AHItem item;
-    private final ConfirmType type;
 
-    public enum ConfirmType {
-        BUY, REMOVE, ADMIN_REMOVE
+    public AHConfirmMenu(String type, AHItem item) {
+        super(27, type.equals("buy") ? "§0Confirm Purchase" : "§0Confirm Removal");
+        this.type = type;
+        this.item = item;
+        render();
     }
 
-    public AHConfirmMenu(Player player, AHItem item, ConfirmType type) {
-        super(27, type == ConfirmType.BUY ? "Confirm Purchase" : "Confirm Removal");
-        this.item = item;
-        this.type = type;
+    private void render() {
+        // Fill empty background
+        ItemStack bg = create(Material.BLACK_STAINED_GLASS_PANE, " ");
+        IntStream.range(0, 27).forEach(i -> inventory.setItem(i, bg));
+
+        // Slot 11: Confirm (Lime)
+        inventory.setItem(11, create(Material.LIME_STAINED_GLASS_PANE,
+                type.equals("buy") ? "§a§lConfirm Purchase" : "§c§lConfirm Removal",
+                "§7Click to process."));
+
+        // Slot 13: Auction Item
+        inventory.setItem(13, item.getItem());
+
+        // Slot 15: Cancel (Red)
+        inventory.setItem(15, create(Material.RED_STAINED_GLASS_PANE, "§c§lCancel",
+                "§7Click to go back."));
     }
 
     @Override
-    public void open(Player p) {
-        render();
-        p.openInventory(getInventory());
-    }
-
-    public void render() {
-        for (int i = 0; i < 27; i++)
-            inventory.setItem(i, create(Material.GRAY_STAINED_GLASS_PANE, " "));
-
-        Material confirmMat = (type == ConfirmType.BUY) ? Material.LIME_STAINED_GLASS_PANE
-                : Material.ORANGE_STAINED_GLASS_PANE;
-        String confirmName = (type == ConfirmType.BUY) ? "§a§lConfirm Purchase" : "§6§lRemove from Auction";
-        inventory.setItem(11, create(confirmMat, confirmName, "§7Click to proceed."));
-
-        inventory.setItem(13, item.getItem());
-
-        String cancelName = (type == ConfirmType.BUY) ? "§c§lCancel" : "§7§lKeep Listing";
-        inventory.setItem(15, create(Material.RED_STAINED_GLASS_PANE, cancelName, "§7Go back."));
-    }
-
-    public AHItem getItem() {
-        return item;
-    }
-
-    public ConfirmType getType() {
-        return type;
+    public void open(Player player) {
+        player.openInventory(getInventory());
     }
 }

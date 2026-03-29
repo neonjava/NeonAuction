@@ -3,6 +3,7 @@ package dev.neonjava.neonah.listeners;
 import dev.neonjava.neonah.managers.AHManager;
 import dev.neonjava.neonah.menus.*;
 import dev.neonjava.neonah.utils.AHDialogUtils;
+import dev.neonjava.neonah.utils.BedrockUtils;
 import dev.neonjava.neonah.models.AHItem;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -43,6 +44,8 @@ public class AHMenuListener implements Listener {
                 new AHMainMenu(player, false).open(player);
         } else if (holder instanceof AHMyListingsMenu menu) {
             handleListings(player, menu, slot);
+        } else if (holder instanceof AHConfirmMenu menu) {
+            handleConfirm(player, menu, slot);
         }
     }
 
@@ -88,16 +91,22 @@ public class AHMenuListener implements Listener {
 
         AHItem item = items.get(index);
 
-        // Close inventory FIRST, then show dialog via scheduler.run() (NeonOrder
-        // pattern)
+        // Close inventory FIRST, then show dialog/menu (NeonOrder pattern)
         player.closeInventory();
 
-        if (menu.isAdmin()) {
-            AHDialogUtils.showAdminRemoveDialog(player, item);
-        } else if (item.getSeller().equals(player.getUniqueId())) {
-            AHDialogUtils.showSelfRemoveDialog(player, item);
+        boolean isBedrock = BedrockUtils.isBedrock(player);
+        if (isBedrock) {
+            new AHConfirmMenu(
+                    menu.isAdmin() ? "admin" : (item.getSeller().equals(player.getUniqueId()) ? "remove" : "buy"), item)
+                    .open(player);
         } else {
-            AHDialogUtils.showBuyDialog(player, item);
+            if (menu.isAdmin()) {
+                AHDialogUtils.showAdminRemoveDialog(player, item);
+            } else if (item.getSeller().equals(player.getUniqueId())) {
+                AHDialogUtils.showSelfRemoveDialog(player, item);
+            } else {
+                AHDialogUtils.showBuyDialog(player, item);
+            }
         }
     }
 
@@ -126,6 +135,24 @@ public class AHMenuListener implements Listener {
                 player.sendMessage("§a§l[AH] §aAll unlisted items reclaimed!");
                 menu.render();
             }
+        }
+    }
+
+    private void handleConfirm(Player player, AHConfirmMenu menu, int slot) {
+        if (slot == 11) { // Confirm (Lime)
+            player.closeInventory();
+            if (menu.getType().equals("buy")) {
+                AHDialogUtils.processPurchase(player, menu.getItem());
+            } else if (menu.getType().equals("remove")) {
+                AHDialogUtils.processRemoval(player, menu.getItem());
+            } else if (menu.getType().equals("admin")) {
+                AHManager.get().removeItem(menu.getItem());
+                AHManager.get().markUnclaimed(menu.getItem().getSeller(), menu.getItem().getItem());
+                player.sendMessage("§a§l[AH] §aListing force-removed.");
+            }
+        } else if (slot == 15 || slot == 13) { // Cancel (Red) or Item (Optional)
+            // Go back to main menu
+            new AHMainMenu(player, false).open(player);
         }
     }
 
