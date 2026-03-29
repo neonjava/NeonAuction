@@ -98,4 +98,23 @@ public class AHManager {
             }
         }
     }
+
+    // --- Permission-based limits ---
+    private static final int[] LIMIT_TIERS = { 100, 50, 25, 10, 5, 3, 1 };
+    private static final int DEFAULT_LIMIT = 3;
+
+    public int getLimit(org.bukkit.entity.Player p) {
+        for (int tier : LIMIT_TIERS) {
+            if (p.hasPermission("neonah.limit." + tier))
+                return tier;
+        }
+        return DEFAULT_LIMIT;
+    }
+
+    public boolean isAtLimit(org.bukkit.entity.Player p) {
+        long active = activeItems.stream()
+                .filter(i -> i.getSeller().equals(p.getUniqueId()))
+                .count();
+        return active >= getLimit(p);
+    }
 }

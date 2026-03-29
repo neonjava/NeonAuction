@@ -56,6 +56,12 @@ public class AHCommandBuilder {
                                         return 0;
                                     }
 
+                                    if (AHManager.get().isAtLimit(p)) {
+                                        p.sendMessage("§c§l[AH] §cYou have reached your listing limit (§e"
+                                                + AHManager.get().getLimit(p) + "§c). Cancel a listing first.");
+                                        return 0;
+                                    }
+
                                     AHManager.get().addItem(new AHItem(p.getUniqueId(), item.clone(), price));
                                     p.getInventory().setItemInMainHand(null);
                                     p.sendMessage("§a§l[AH] §aItem listed for "
