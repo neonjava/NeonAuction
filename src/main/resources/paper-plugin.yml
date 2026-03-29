@@ -9,3 +9,6 @@ dependencies:
     Vault:
       load: BEFORE
       required: true
+    Geyser-Spigot:
+      load: BEFORE
+      required: false
