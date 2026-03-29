@@ -65,8 +65,11 @@ public class AHCommandBuilder {
                                     AHManager.get().addItem(new AHItem(p.getUniqueId(), item.clone(), price));
                                     p.getInventory().setItemInMainHand(null);
 
+                                    // Debug signal
+                                    p.getServer().getLogger().info("[AH] Broadcasting listing from " + p.getName());
+
                                     // Broadcast new auction
-                                    Bukkit.broadcast(
+                                    p.getServer().sendMessage(
                                             net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
                                                     "<gold><bold>[AH] <white>" + p.getName()
                                                             + " <gray>has listed an <white><item> <gray>for <yellow>"
