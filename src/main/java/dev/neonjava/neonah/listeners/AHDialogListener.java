@@ -20,7 +20,7 @@ public class AHDialogListener implements Listener {
      * propagates
      * through to the modal form as an immediate button press.
      */
-    private static final long GRACE_MS = 800L;
+    private static final long GRACE_MS = 100L;
 
     @EventHandler
     public void onDialogClick(PlayerCustomClickEvent e) {
