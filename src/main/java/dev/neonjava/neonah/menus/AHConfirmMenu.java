@@ -32,8 +32,6 @@ public class AHConfirmMenu extends AHBaseMenu {
 
     private void render() {
         inventory.clear();
-        ItemStack bg = create(Material.BLACK_STAINED_GLASS_PANE, " ");
-        IntStream.range(0, inventory.getSize()).forEach(i -> inventory.setItem(i, bg));
 
         // Layout adapts based on size
         int confirmSlot = isShulker ? 11 : 11;
