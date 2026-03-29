@@ -97,20 +97,12 @@ public class AHMenuListener implements Listener {
         // Close inventory FIRST, then show dialog/menu (NeonOrder pattern)
         player.closeInventory();
 
-        boolean isBedrock = BedrockUtils.isBedrock(player);
-
-        if (isBedrock) {
-            new AHConfirmMenu(
-                    menu.isAdmin() ? "admin" : (item.getSeller().equals(player.getUniqueId()) ? "remove" : "buy"), item)
-                    .open(player);
+        if (menu.isAdmin()) {
+            AHDialogUtils.showAdminRemoveDialog(player, item);
+        } else if (item.getSeller().equals(player.getUniqueId())) {
+            AHDialogUtils.showSelfRemoveDialog(player, item);
         } else {
-            if (menu.isAdmin()) {
-                AHDialogUtils.showAdminRemoveDialog(player, item);
-            } else if (item.getSeller().equals(player.getUniqueId())) {
-                AHDialogUtils.showSelfRemoveDialog(player, item);
-            } else {
-                AHDialogUtils.showBuyDialog(player, item);
-            }
+            AHDialogUtils.showBuyDialog(player, item);
         }
     }
 
