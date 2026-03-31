@@ -107,7 +107,9 @@ public class AHCommandBuilder {
                 .then(Commands.literal("reload")
                         .executes(ctx -> {
                             dev.neonjava.neonah.managers.ConfigManager.get().reload();
-                            ctx.getSource().getSender().sendMessage("§a§l[AH] §aConfiguration and Messages reloaded!");
+                            ctx.getSource().getSender().sendMessage(
+                                    net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+                                            "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Configuration and Messages reloaded!"));
                             return 1;
                         }))
                 .then(Commands.literal("history")
@@ -118,14 +120,17 @@ public class AHCommandBuilder {
                                     if (!(ctx.getSource().getExecutor() instanceof Player sender))
                                         return 0;
 
-                                    sender.sendMessage("§b§l[AH-Admin] "
-                                            + dev.neonjava.neonah.utils.AHFormatter.toSmallCaps("History for " + target)
-                                            + ":");
+                                    net.kyori.adventure.text.minimessage.MiniMessage mm = net.kyori.adventure.text.minimessage.MiniMessage
+                                            .miniMessage();
+                                    sender.sendMessage(mm.deserialize(
+                                            "<gradient:#8fd3f4:#84fab0><bold>[AH-Admin]</bold></gradient> <white>History for <aqua>"
+                                                    + target + "<white>:"));
                                     AHManager.get().getHistory(op.getUniqueId()).forEach(hi -> {
                                         boolean sold = hi.getSeller().equals(op.getUniqueId());
-                                        String type = sold ? "§c[SOLD]" : "§a[BOUGHT]";
-                                        sender.sendMessage(type + " §f" + hi.getItem().getType() + " §e"
-                                                + AHFormatter.formatPrice(hi.getPrice()));
+                                        String type = sold ? "<red>[SOLD]" : "<green>[BOUGHT]";
+                                        sender.sendMessage(
+                                                mm.deserialize(type + " <white>" + hi.getItem().getType() + " <yellow>"
+                                                        + AHFormatter.formatPrice(hi.getPrice())));
                                     });
                                     return 1;
                                 })))

@@ -22,8 +22,10 @@ public class AHConfirmMenu extends AHBaseMenu {
     public AHConfirmMenu(String type, AHItem item) {
         // Use 54 slots (6 rows) if it's a shulker preview, 27 slots (3 rows) otherwise.
         super(isShulker(item.getItem()) ? 54 : 27,
-                (type.equals("buy") ? "§0Confirm Purchase" : "§0Confirm Removal")
-                        + (isShulker(item.getItem()) ? " (Preview)" : ""));
+                net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+                        (type.equals("buy") ? "<gradient:#84fab0:#8fd3f4>Confirm Purchase"
+                                : "<gradient:#ff0844:#ffb199>Confirm Removal")
+                                + (isShulker(item.getItem()) ? " (Preview)" : "")));
         this.type = type;
         this.item = item;
         this.isShulker = isShulker(item.getItem());
@@ -32,21 +34,23 @@ public class AHConfirmMenu extends AHBaseMenu {
 
     private void render() {
         inventory.clear();
+        net.kyori.adventure.text.minimessage.MiniMessage mm = net.kyori.adventure.text.minimessage.MiniMessage
+                .miniMessage();
 
         // Layout adapts based on size
-        int confirmSlot = isShulker ? 11 : 11;
-        int itemSlot = isShulker ? 13 : 13;
-        int cancelSlot = isShulker ? 15 : 15;
+        int confirmSlot = 11;
+        int itemSlot = 13;
+        int cancelSlot = 15;
 
         // Action Buttons
         inventory.setItem(confirmSlot, create(Material.LIME_STAINED_GLASS_PANE,
-                type.equals("buy") ? "§a§l✔ Confirm Purchase" : "§c§l✔ Confirm Removal",
-                "§7Click to process."));
+                mm.deserialize(type.equals("buy") ? "<green><bold>✔ Confirm Purchase" : "<red><bold>✔ Confirm Removal"),
+                mm.deserialize("<gray>Click to process.")));
 
         inventory.setItem(itemSlot, item.getItem());
 
-        inventory.setItem(cancelSlot, create(Material.RED_STAINED_GLASS_PANE, "§c§l✖ Cancel",
-                "§7Click to go back."));
+        inventory.setItem(cancelSlot, create(Material.RED_STAINED_GLASS_PANE, mm.deserialize("<red><bold>✖ Cancel"),
+                mm.deserialize("<gray>Click to go back.")));
 
         // Shulker Contents (Rows 3, 4, 5)
         if (isShulker && item.getItem().getItemMeta() instanceof BlockStateMeta bsm) {
@@ -57,13 +61,14 @@ public class AHConfirmMenu extends AHBaseMenu {
                     if (contents[i] != null && contents[i].getType() != Material.AIR) {
                         inventory.setItem(18 + i, contents[i]);
                     } else {
-                        inventory.setItem(18 + i, create(Material.LIGHT_GRAY_STAINED_GLASS_PANE, " "));
+                        inventory.setItem(18 + i, create(Material.LIGHT_GRAY_STAINED_GLASS_PANE, mm.deserialize(" ")));
                     }
                 }
 
                 // Add Lore hint for preview
                 inventory.setItem(4,
-                        create(Material.BOOK, "§d§lShulker Box Contents", "§7Below is a live preview of the box."));
+                        create(Material.BOOK, mm.deserialize("<light_purple><bold>Shulker Box Contents"),
+                                mm.deserialize("<gray>Below is a live preview of the box.")));
             }
         }
     }

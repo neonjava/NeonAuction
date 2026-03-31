@@ -38,11 +38,11 @@ public class AHMainMenu extends AHBaseMenu {
     }
 
     public AHMainMenu(Player player, boolean admin) {
-        super(54, admin ? "§4§l" + AHFormatter.toSmallCaps("Admin Auction House")
-                : "§6§l" + AHFormatter.toSmallCaps("Auction House"));
+        super(54, net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+                admin ? "<gradient:#ff0844:#ffb199><bold>" + AHFormatter.toSmallCaps("Admin Auction House")
+                        : "<gradient:#f6d365:#fda085><bold>" + AHFormatter.toSmallCaps("Auction House")));
         this.player = player;
         this.admin = admin;
-        // Clear any stale pending actions when opening fresh
         AHManager.get().clearPending(player.getUniqueId());
     }
 
@@ -54,6 +54,8 @@ public class AHMainMenu extends AHBaseMenu {
 
     public void render() {
         inventory.clear();
+        net.kyori.adventure.text.minimessage.MiniMessage mm = net.kyori.adventure.text.minimessage.MiniMessage
+                .miniMessage();
         List<AHItem> items = new ArrayList<>(AHManager.get().getItems());
 
         switch (sortMode) {
@@ -70,37 +72,34 @@ public class AHMainMenu extends AHBaseMenu {
             ItemStack stack = item.getItem().clone();
             ItemMeta meta = stack.getItemMeta();
             if (meta != null) {
-                List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
-                lore.add("§8§m                    ");
+                List<net.kyori.adventure.text.Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore())
+                        : new ArrayList<>();
+                lore.add(mm.deserialize("<dark_gray><strikethrough>                    "));
 
                 boolean isHighValue = item.getPrice() >= HIGH_PRICE_THRESHOLD;
 
-                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.seller")
-                        .replace("%name%", Bukkit.getOfflinePlayer(item.getSeller()).getName()))));
-
-                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.price")
-                        .replace("%price%", AHFormatter.formatPrice(item.getPrice())))));
+                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.seller")
+                        .replace("%name%", Bukkit.getOfflinePlayer(item.getSeller()).getName())));
+                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.price")
+                        .replace("%price%", AHFormatter.formatPrice(item.getPrice()))));
 
                 if (isHighValue)
-                    lore.add(AHFormatter
-                            .toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.high-value"))));
+                    lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.high-value")));
 
-                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.expires")
-                        .replace("%time%", AHFormatter.formatTimeLeft(item.getListedAt())))));
-                lore.add("");
+                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.expires")
+                        .replace("%time%", AHFormatter.formatTimeLeft(item.getListedAt()))));
+                lore.add(net.kyori.adventure.text.Component.empty());
 
                 if (admin)
-                    lore.add("§c§l⚠ Admin: Click to Force Remove");
+                    lore.add(mm.deserialize("<red><bold>⚠ Admin: Click to Force Remove"));
                 else if (item.getSeller().equals(player.getUniqueId()))
-                    lore.add(AHFormatter
-                            .toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.cancel"))));
+                    lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.cancel")));
                 else
-                    lore.add(
-                            AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.buy"))));
+                    lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.buy")));
 
-                meta.setLore(lore);
+                meta.lore(lore.stream()
+                        .map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
 
-                // Add enchant glow to high-value items
                 if (isHighValue && sortMode == SortMode.HIGH) {
                     meta.addEnchant(Enchantment.UNBREAKING, 1, true);
                     meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
@@ -111,35 +110,43 @@ public class AHMainMenu extends AHBaseMenu {
         }
 
         // Bottom border
+        ItemStack glass = create(Material.BLACK_STAINED_GLASS_PANE, mm.deserialize(" "));
         for (int i = 45; i < 54; i++)
-            inventory.setItem(i, create(Material.BLACK_STAINED_GLASS_PANE, " "));
+            inventory.setItem(i, glass);
 
-        // Slot 45 – Sort button (icon changes with mode)
-        inventory.setItem(45, create(sortMode.icon, "§e§l" + AHFormatter.toSmallCaps("Sort: " + sortMode.label),
-                "§7Click to cycle: Recent → Low → High"));
+        // Slot 45 – Sort button
+        inventory.setItem(45, create(sortMode.icon,
+                mm.deserialize("<yellow><bold>" + AHFormatter.toSmallCaps("Sort: " + sortMode.label)),
+                mm.deserialize("<gray>Click to cycle: Recent → Low → High")));
 
-        // Slot 46 – Refresh (Moved beside Sorter)
-        inventory.setItem(46, create(Material.NETHER_STAR, "§b§l" + AHFormatter.toSmallCaps("Refresh"),
-                "§7Click to reload listings."));
+        // Slot 46 – Refresh
+        inventory.setItem(46, create(Material.NETHER_STAR,
+                mm.deserialize("<aqua><bold>" + AHFormatter.toSmallCaps("Refresh")),
+                mm.deserialize("<gray>Click to reload listings.")));
 
         // Slot 48 – Prev page
         if (page > 0)
-            inventory.setItem(48, create(Material.ARROW, "§e" + AHFormatter.toSmallCaps("Previous Page")));
+            inventory.setItem(48,
+                    create(Material.ARROW, mm.deserialize("<yellow>" + AHFormatter.toSmallCaps("Previous Page"))));
 
         // Slot 49 – Close
-        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "§c§l" + AHFormatter.toSmallCaps("Close Menu")));
+        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE,
+                mm.deserialize("<red><bold>" + AHFormatter.toSmallCaps("Close Menu"))));
 
         // Slot 50 – Next page
         if (end < items.size())
-            inventory.setItem(50, create(Material.ARROW, "§e" + AHFormatter.toSmallCaps("Next Page")));
+            inventory.setItem(50,
+                    create(Material.ARROW, mm.deserialize("<yellow>" + AHFormatter.toSmallCaps("Next Page"))));
 
         // Slot 52 – My Listings
-        inventory.setItem(52, create(Material.CHEST, "§6§l" + AHFormatter.toSmallCaps("My Listings"),
-                "§7View or reclaim your items."));
+        inventory.setItem(52, create(Material.CHEST,
+                mm.deserialize("<orange><bold>" + AHFormatter.toSmallCaps("My Listings")),
+                mm.deserialize("<gray>View or reclaim your items.")));
 
         // Slot 53 – History
-        inventory.setItem(53, create(Material.ENDER_CHEST, "§5§l" + AHFormatter.toSmallCaps("Auction History"),
-                "§7View your recent sales & buys."));
+        inventory.setItem(53, create(Material.ENDER_CHEST,
+                mm.deserialize("<light_purple><bold>" + AHFormatter.toSmallCaps("Auction History")),
+                mm.deserialize("<gray>View your recent sales & buys.")));
     }
 
     public void cycleSort() {

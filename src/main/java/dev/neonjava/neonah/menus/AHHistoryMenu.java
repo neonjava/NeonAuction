@@ -18,7 +18,8 @@ public class AHHistoryMenu extends AHBaseMenu {
     private int page = 0;
 
     public AHHistoryMenu(Player player) {
-        super(54, "§5§l" + AHFormatter.toSmallCaps("Auction History"));
+        super(54, net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+                "<gradient:#9d50bb:#6e48aa><bold>" + AHFormatter.toSmallCaps("Auction History")));
         this.player = player;
     }
 
@@ -30,6 +31,8 @@ public class AHHistoryMenu extends AHBaseMenu {
 
     public void render() {
         inventory.clear();
+        net.kyori.adventure.text.minimessage.MiniMessage mm = net.kyori.adventure.text.minimessage.MiniMessage
+                .miniMessage();
         List<AHHistoryItem> history = AHManager.get().getHistory(player.getUniqueId());
 
         int start = page * 45;
@@ -41,19 +44,23 @@ public class AHHistoryMenu extends AHBaseMenu {
 
             Material iconMat = hi.getItem().getType();
 
-            String status = sold ? "§c§l[SOLD]" : "§a§l[BOUGHT]";
-            String userTag = sold ? "§7Buyer: §f" : "§7Seller: §f";
+            net.kyori.adventure.text.Component status = mm
+                    .deserialize(sold ? "<red><bold>[SOLD]" : "<green><bold>[BOUGHT]");
+            String userTag = sold ? "<gray>Buyer: <white>" : "<gray>Seller: <white>";
             String userName = Bukkit.getOfflinePlayer(sold ? hi.getBuyer() : hi.getSeller()).getName();
 
-            String previewHint = AHConfirmMenu.isShulker(hi.getItem()) ? "§e§l▶ Click to View Contents" : "";
+            net.kyori.adventure.text.Component previewHint = AHConfirmMenu.isShulker(hi.getItem())
+                    ? mm.deserialize("<yellow><bold>▶ Click to View Contents")
+                    : net.kyori.adventure.text.Component.empty();
 
-            inventory.setItem(i - start, create(iconMat, status + " §f" + hi.getItem().getType(),
-                    "§8§m                    ",
-                    userTag + userName,
-                    AHFormatter.stripBold("§7Price: §e" + AHFormatter.formatPrice(hi.getPrice())),
-                    AHFormatter.stripBold("§7Date: §8"
+            inventory.setItem(i - start, create(iconMat,
+                    status.append(mm.deserialize(" <white>" + hi.getItem().getType())),
+                    mm.deserialize("<dark_gray><strikethrough>                    "),
+                    mm.deserialize(userTag + userName),
+                    mm.deserialize("<gray>Price: <yellow>" + AHFormatter.formatPrice(hi.getPrice())),
+                    mm.deserialize("<gray>Date: <dark_gray>"
                             + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date(hi.getTimestamp()))),
-                    "",
+                    net.kyori.adventure.text.Component.empty(),
                     previewHint));
         }
 

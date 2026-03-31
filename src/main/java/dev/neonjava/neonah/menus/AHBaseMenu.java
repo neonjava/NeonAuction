@@ -12,7 +12,7 @@ import java.util.List;
 public abstract class AHBaseMenu implements InventoryHolder {
     protected final Inventory inventory;
 
-    public AHBaseMenu(int size, String title) {
+    public AHBaseMenu(int size, net.kyori.adventure.text.Component title) {
         this.inventory = Bukkit.createInventory(this, size, title);
     }
 
@@ -23,15 +23,24 @@ public abstract class AHBaseMenu implements InventoryHolder {
         return inventory;
     }
 
-    protected ItemStack create(Material mat, String name, String... lore) {
+    protected ItemStack create(Material mat, net.kyori.adventure.text.Component name,
+            net.kyori.adventure.text.Component... lore) {
         ItemStack stack = new ItemStack(mat);
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(name);
+            meta.displayName(name.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
             if (lore.length > 0)
-                meta.setLore(List.of(lore));
+                meta.lore(List.of(lore).stream()
+                        .map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
             stack.setItemMeta(meta);
         }
         return stack;
+    }
+
+    protected ItemStack create(Material mat, String name, String... lore) {
+        return create(mat, net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(name),
+                java.util.Arrays.stream(lore)
+                        .map(l -> net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(l))
+                        .toArray(net.kyori.adventure.text.Component[]::new));
     }
 }

@@ -25,7 +25,8 @@ public class AHMyListingsMenu extends AHBaseMenu {
     }
 
     public AHMyListingsMenu(Player player, int page) {
-        super(54, "§6§l" + AHFormatter.toSmallCaps("My Listings"));
+        super(54, net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+                "<gradient:#f6d365:#fda085><bold>" + AHFormatter.toSmallCaps("My Listings")));
         this.player = player;
         this.page = page;
     }
@@ -38,6 +39,8 @@ public class AHMyListingsMenu extends AHBaseMenu {
 
     public void render() {
         inventory.clear();
+        net.kyori.adventure.text.minimessage.MiniMessage mm = net.kyori.adventure.text.minimessage.MiniMessage
+                .miniMessage();
         UUID uuid = player.getUniqueId();
 
         // Active Listings (Top 27 slots, paginated)
@@ -53,53 +56,61 @@ public class AHMyListingsMenu extends AHBaseMenu {
             ItemStack stack = item.getItem().clone();
             ItemMeta meta = stack.getItemMeta();
             if (meta != null) {
-                List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
-                lore.add("§8§m                    ");
-                lore.add("§7Type: §a§l" + AHFormatter.toSmallCaps("Active"));
-                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.price")
-                        .replace("%price%", AHFormatter.formatPrice(item.getPrice())))));
-                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.cancel"))));
-                meta.setLore(lore);
+                List<net.kyori.adventure.text.Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore())
+                        : new ArrayList<>();
+                lore.add(mm.deserialize("<dark_gray><strikethrough>                    "));
+                lore.add(mm.deserialize("<gray>Type: <green><bold>" + AHFormatter.toSmallCaps("Active")));
+                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.price")
+                        .replace("%price%", AHFormatter.formatPrice(item.getPrice()))));
+                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.cancel")));
+                meta.lore(lore.stream()
+                        .map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
                 stack.setItemMeta(meta);
             }
             inventory.setItem(i - start, stack);
         }
 
-        // Unclaimed Items (Middle 18 slots, no pagination for now)
+        // Unclaimed Items (Middle 18 slots)
         List<ItemStack> unclaimed = AHManager.get().getUnclaimed(uuid);
         for (int i = 0; i < Math.min(unclaimed.size(), 18); i++) {
             ItemStack stack = unclaimed.get(i).clone();
             ItemMeta meta = stack.getItemMeta();
             if (meta != null) {
-                List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
-                lore.add("§8§m                    ");
-                lore.add("§7Type: §c§l" + AHFormatter.toSmallCaps("Unlisted / Reclaim"));
-                lore.add(
-                        AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.reclaim"))));
-                meta.setLore(lore);
+                List<net.kyori.adventure.text.Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore())
+                        : new ArrayList<>();
+                lore.add(mm.deserialize("<dark_gray><strikethrough>                    "));
+                lore.add(mm.deserialize("<gray>Type: <red><bold>" + AHFormatter.toSmallCaps("Unlisted / Reclaim")));
+                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.reclaim")));
+                meta.lore(lore.stream()
+                        .map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
                 stack.setItemMeta(meta);
             }
             inventory.setItem(27 + i, stack);
         }
 
         // Bottom Bar
+        ItemStack glass = create(Material.BLACK_STAINED_GLASS_PANE, mm.deserialize(" "));
         for (int i = 45; i < 54; i++)
-            inventory.setItem(i, create(Material.BLACK_STAINED_GLASS_PANE, " "));
+            inventory.setItem(i, glass);
 
         // Status Item (Page Info)
         int totalPages = (int) Math.ceil(active.size() / 27.0);
-        inventory.setItem(45, create(Material.PAPER, "§e§lPage: §f" + (page + 1) + " / " + Math.max(1, totalPages),
-                "§7Active listings: §b" + active.size()));
+        inventory.setItem(45, create(Material.PAPER,
+                mm.deserialize("<yellow><bold>Page: <white>" + (page + 1) + " / " + Math.max(1, totalPages)),
+                mm.deserialize("<gray>Active listings: <aqua>" + active.size())));
 
         // Back button
-        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "§c§l" + AHFormatter.toSmallCaps("Back to AH")));
+        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE,
+                mm.deserialize("<red><bold>" + AHFormatter.toSmallCaps("Back to AH"))));
 
         // Pagination Arrows
         if (page > 0) {
-            inventory.setItem(48, create(Material.ARROW, "§e" + AHFormatter.toSmallCaps("Previous Page")));
+            inventory.setItem(48,
+                    create(Material.ARROW, mm.deserialize("<yellow>" + AHFormatter.toSmallCaps("Previous Page"))));
         }
         if (end < active.size()) {
-            inventory.setItem(50, create(Material.ARROW, "§e" + AHFormatter.toSmallCaps("Next Page")));
+            inventory.setItem(50,
+                    create(Material.ARROW, mm.deserialize("<yellow>" + AHFormatter.toSmallCaps("Next Page"))));
         }
     }
 
