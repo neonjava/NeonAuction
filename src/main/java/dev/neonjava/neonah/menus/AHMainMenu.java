@@ -24,9 +24,9 @@ public class AHMainMenu extends AHBaseMenu {
     private static final double HIGH_PRICE_THRESHOLD = 1_000.0;
 
     public enum SortMode {
-        RECENT("§fMost Recent", Material.CLOCK),
-        LOW("§aLowest Price", Material.HOPPER),
-        HIGH("§6Highest Price", Material.GOLD_NUGGET);
+        RECENT("<white>Most Recent", Material.CLOCK),
+        LOW("<green>Lowest Price", Material.HOPPER),
+        HIGH("<gold>Highest Price", Material.GOLD_NUGGET);
 
         public final String label;
         public final Material icon;
