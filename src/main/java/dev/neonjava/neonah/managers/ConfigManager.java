@@ -58,8 +58,12 @@ public class ConfigManager {
             String msg = messages.getString(k);
             if (msg == null)
                 return "§cMissing message: " + k;
-            return msg.replace("&", "§");
+            return msg;
         });
+    }
+
+    public net.kyori.adventure.text.Component getMiniMessage(String path) {
+        return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(getMessage(path));
     }
 
     public FileConfiguration getConfig() {

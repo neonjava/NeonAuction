@@ -88,9 +88,18 @@ public class AHManager {
         pending.remove(player);
     }
 
+    /**
+     * Periodically called to check for expired auction listings.
+     * Items that exceed the configured duration are moved to the seller's unclaimed
+     * storage.
+     */
     public void checkExpiry() {
         long now = System.currentTimeMillis();
-        long limit = 24 * 60 * 60 * 1000L;
+        // Read expiry duration from config (default 24h)
+        long expirySeconds = dev.neonjava.neonah.managers.ConfigManager.get()
+                .getConfig().getLong("settings.expiry-duration", 86400L);
+        long limit = expirySeconds * 1000L;
+
         for (AHItem item : activeItems) {
             if (now - item.getListedAt() > limit) {
                 removeItem(item);
