@@ -13,7 +13,7 @@ public class AHFormatter {
             return formatCompact(price / 1_000_000, "m");
         if (price >= 1_000)
             return formatCompact(price / 1_000, "k");
-        return PRICE_FORMAT.format(price) + "₹";
+        return PRICE_FORMAT.format(price) + "$";
     }
 
     public static double parsePrice(String input) {
@@ -39,7 +39,7 @@ public class AHFormatter {
     }
 
     private static String formatCompact(double val, String suffix) {
-        return (val == (long) val ? String.format("%d", (long) val) : String.format("%.1f", val)) + suffix + "₹";
+        return (val == (long) val ? String.format("%d", (long) val) : String.format("%.1f", val)) + suffix + "$";
     }
 
     public static String stripBold(String text) {
