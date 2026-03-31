@@ -1,6 +1,7 @@
 package dev.neonjava.neonah.menus;
 
 import dev.neonjava.neonah.managers.AHManager;
+import dev.neonjava.neonah.managers.ConfigManager;
 import dev.neonjava.neonah.models.AHHistoryItem;
 import dev.neonjava.neonah.utils.AHFormatter;
 import org.bukkit.Bukkit;
@@ -18,7 +19,7 @@ public class AHHistoryMenu extends AHBaseMenu {
     private int page = 0;
 
     public AHHistoryMenu(Player player) {
-        super(54, net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+        super(54, ConfigManager.parse(
                 "<gradient:#9d50bb:#6e48aa><bold>" + AHFormatter.toSmallCaps("Auction History")));
         this.player = player;
     }
@@ -31,8 +32,6 @@ public class AHHistoryMenu extends AHBaseMenu {
 
     public void render() {
         inventory.clear();
-        net.kyori.adventure.text.minimessage.MiniMessage mm = net.kyori.adventure.text.minimessage.MiniMessage
-                .miniMessage();
         List<AHHistoryItem> history = AHManager.get().getHistory(player.getUniqueId());
 
         int start = page * 45;
@@ -44,21 +43,21 @@ public class AHHistoryMenu extends AHBaseMenu {
 
             Material iconMat = hi.getItem().getType();
 
-            net.kyori.adventure.text.Component status = mm
-                    .deserialize(sold ? "<red><bold>[SOLD]" : "<green><bold>[BOUGHT]");
+            net.kyori.adventure.text.Component status = ConfigManager
+                    .parse(sold ? "<red><bold>[SOLD]" : "<green><bold>[BOUGHT]");
             String userTag = sold ? "<gray>Buyer: <white>" : "<gray>Seller: <white>";
             String userName = Bukkit.getOfflinePlayer(sold ? hi.getBuyer() : hi.getSeller()).getName();
 
             net.kyori.adventure.text.Component previewHint = AHConfirmMenu.isShulker(hi.getItem())
-                    ? mm.deserialize("<yellow><bold>▶ Click to View Contents")
+                    ? ConfigManager.parse("<yellow><bold>▶ Click to View Contents")
                     : net.kyori.adventure.text.Component.empty();
 
             inventory.setItem(i - start, create(iconMat,
-                    status.append(mm.deserialize(" <white>" + hi.getItem().getType())),
-                    mm.deserialize("<dark_gray><strikethrough>                    "),
-                    mm.deserialize(userTag + userName),
-                    mm.deserialize("<gray>Price: <yellow>" + AHFormatter.formatPrice(hi.getPrice())),
-                    mm.deserialize("<gray>Date: <dark_gray>"
+                    status.append(ConfigManager.parse(" <white>" + hi.getItem().getType())),
+                    ConfigManager.parse("<dark_gray><strikethrough>                    "),
+                    ConfigManager.parse(userTag + userName),
+                    ConfigManager.parse("<gray>Price: <yellow>" + AHFormatter.formatPrice(hi.getPrice())),
+                    ConfigManager.parse("<gray>Date: <dark_gray>"
                             + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date(hi.getTimestamp()))),
                     net.kyori.adventure.text.Component.empty(),
                     previewHint));

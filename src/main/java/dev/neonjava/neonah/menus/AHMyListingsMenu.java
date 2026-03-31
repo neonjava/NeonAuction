@@ -25,7 +25,7 @@ public class AHMyListingsMenu extends AHBaseMenu {
     }
 
     public AHMyListingsMenu(Player player, int page) {
-        super(54, net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+        super(54, ConfigManager.parse(
                 "<gradient:#f6d365:#fda085><bold>" + AHFormatter.toSmallCaps("My Listings")));
         this.player = player;
         this.page = page;
@@ -70,48 +70,40 @@ public class AHMyListingsMenu extends AHBaseMenu {
             inventory.setItem(i - start, stack);
         }
 
-        // Unclaimed Items (Middle 18 slots)
-        List<ItemStack> unclaimed = AHManager.get().getUnclaimed(uuid);
-        for (int i = 0; i < Math.min(unclaimed.size(), 18); i++) {
-            ItemStack stack = unclaimed.get(i).clone();
-            ItemMeta meta = stack.getItemMeta();
-            if (meta != null) {
-                List<net.kyori.adventure.text.Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore())
-                        : new ArrayList<>();
-                lore.add(mm.deserialize("<dark_gray><strikethrough>                    "));
-                lore.add(mm.deserialize("<gray>Type: <red><bold>" + AHFormatter.toSmallCaps("Unlisted / Reclaim")));
-                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.reclaim")));
-                meta.lore(lore.stream()
-                        .map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
-                stack.setItemMeta(meta);
-            }
-            inventory.setItem(27 + i, stack);
+        // ─────────────────────────────────────────────────────────────
+        // Returns & Navigation (Bottom 18 slots)
+        // ─────────────────────────────────────────────────────────────
+
+        // Separator
+        ItemStack glass = create(Material.BLACK_STAINED_GLASS_PANE, ConfigManager.parse(" "));
+        for (int j = 27; j < 36; j++)
+            inventory.setItem(j, glass);
+
+        // Reclaim All button
+        inventory.setItem(31, create(Material.HOPPER,
+                ConfigManager.get().getMiniMessage("lore.reclaim"),
+                ConfigManager.parse("<gray>Click to reclaim all expired items.")));
+
+        // Returns (Slots 36-44)
+        List<ItemStack> returns = AHManager.get().getUnclaimed(uuid);
+        for (int j = 0; j < Math.min(9, returns.size()); j++) {
+            inventory.setItem(36 + j, returns.get(j));
         }
 
-        // Bottom Bar
-        ItemStack glass = create(Material.BLACK_STAINED_GLASS_PANE, mm.deserialize(" "));
-        for (int i = 45; i < 54; i++)
-            inventory.setItem(i, glass);
+        // Navigation (Bottom Row)
+        for (int j = 45; j < 54; j++)
+            inventory.setItem(j, glass);
 
-        // Status Item (Page Info)
-        int totalPages = (int) Math.ceil(active.size() / 27.0);
-        inventory.setItem(45, create(Material.PAPER,
-                mm.deserialize("<yellow><bold>Page: <white>" + (page + 1) + " / " + Math.max(1, totalPages)),
-                mm.deserialize("<gray>Active listings: <aqua>" + active.size())));
-
-        // Back button
-        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE,
-                mm.deserialize("<red><bold>" + AHFormatter.toSmallCaps("Back to AH"))));
-
-        // Pagination Arrows
-        if (page > 0) {
+        if (page > 0)
             inventory.setItem(48,
-                    create(Material.ARROW, mm.deserialize("<yellow>" + AHFormatter.toSmallCaps("Previous Page"))));
-        }
-        if (end < active.size()) {
+                    create(Material.ARROW, ConfigManager.parse("<yellow>" + AHFormatter.toSmallCaps("Previous Page"))));
+
+        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE,
+                ConfigManager.parse("<red><bold>" + AHFormatter.toSmallCaps("Back to Menu"))));
+
+        if (end < active.size())
             inventory.setItem(50,
-                    create(Material.ARROW, mm.deserialize("<yellow>" + AHFormatter.toSmallCaps("Next Page"))));
-        }
+                    create(Material.ARROW, ConfigManager.parse("<yellow>" + AHFormatter.toSmallCaps("Next Page"))));
     }
 
     public void next() {

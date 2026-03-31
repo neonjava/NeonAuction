@@ -78,24 +78,24 @@ public class AHMainMenu extends AHBaseMenu {
 
                 boolean isHighValue = item.getPrice() >= HIGH_PRICE_THRESHOLD;
 
-                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.seller")
+                lore.add(ConfigManager.parse(ConfigManager.get().getMessage("lore.seller")
                         .replace("%name%", Bukkit.getOfflinePlayer(item.getSeller()).getName())));
-                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.price")
+                lore.add(ConfigManager.parse(ConfigManager.get().getMessage("lore.price")
                         .replace("%price%", AHFormatter.formatPrice(item.getPrice()))));
 
                 if (isHighValue)
-                    lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.high-value")));
+                    lore.add(ConfigManager.get().getMiniMessage("lore.high-value"));
 
-                lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.expires")
+                lore.add(ConfigManager.parse(ConfigManager.get().getMessage("lore.expires")
                         .replace("%time%", AHFormatter.formatTimeLeft(item.getListedAt()))));
                 lore.add(net.kyori.adventure.text.Component.empty());
 
                 if (admin)
-                    lore.add(mm.deserialize("<red><bold>⚠ Admin: Click to Force Remove"));
+                    lore.add(ConfigManager.parse("<red><bold>⚠ Admin: Click to Force Remove"));
                 else if (item.getSeller().equals(player.getUniqueId()))
-                    lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.cancel")));
+                    lore.add(ConfigManager.get().getMiniMessage("lore.cancel"));
                 else
-                    lore.add(mm.deserialize(ConfigManager.get().getMessage("lore.buy")));
+                    lore.add(ConfigManager.get().getMiniMessage("lore.buy"));
 
                 meta.lore(lore.stream()
                         .map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
@@ -116,37 +116,37 @@ public class AHMainMenu extends AHBaseMenu {
 
         // Slot 45 – Sort button
         inventory.setItem(45, create(sortMode.icon,
-                mm.deserialize("<yellow><bold>" + AHFormatter.toSmallCaps("Sort: " + sortMode.label)),
-                mm.deserialize("<gray>Click to cycle: Recent → Low → High")));
+                ConfigManager.parse("<yellow><bold>" + AHFormatter.toSmallCaps("Sort: " + sortMode.label)),
+                ConfigManager.parse("<gray>Click to cycle: Recent → Low → High")));
 
         // Slot 46 – Refresh
         inventory.setItem(46, create(Material.NETHER_STAR,
-                mm.deserialize("<aqua><bold>" + AHFormatter.toSmallCaps("Refresh")),
-                mm.deserialize("<gray>Click to reload listings.")));
+                ConfigManager.parse("<aqua><bold>" + AHFormatter.toSmallCaps("Refresh")),
+                ConfigManager.parse("<gray>Click to reload listings.")));
 
         // Slot 48 – Prev page
         if (page > 0)
             inventory.setItem(48,
-                    create(Material.ARROW, mm.deserialize("<yellow>" + AHFormatter.toSmallCaps("Previous Page"))));
+                    create(Material.ARROW, ConfigManager.parse("<yellow>" + AHFormatter.toSmallCaps("Previous Page"))));
 
         // Slot 49 – Close
         inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE,
-                mm.deserialize("<red><bold>" + AHFormatter.toSmallCaps("Close Menu"))));
+                ConfigManager.parse("<red><bold>" + AHFormatter.toSmallCaps("Close Menu"))));
 
         // Slot 50 – Next page
         if (end < items.size())
             inventory.setItem(50,
-                    create(Material.ARROW, mm.deserialize("<yellow>" + AHFormatter.toSmallCaps("Next Page"))));
+                    create(Material.ARROW, ConfigManager.parse("<yellow>" + AHFormatter.toSmallCaps("Next Page"))));
 
         // Slot 52 – My Listings
         inventory.setItem(52, create(Material.CHEST,
-                mm.deserialize("<orange><bold>" + AHFormatter.toSmallCaps("My Listings")),
-                mm.deserialize("<gray>View or reclaim your items.")));
+                ConfigManager.parse("<orange><bold>" + AHFormatter.toSmallCaps("My Listings")),
+                ConfigManager.parse("<gray>View or reclaim your items.")));
 
         // Slot 53 – History
         inventory.setItem(53, create(Material.ENDER_CHEST,
-                mm.deserialize("<light_purple><bold>" + AHFormatter.toSmallCaps("Auction History")),
-                mm.deserialize("<gray>View your recent sales & buys.")));
+                ConfigManager.parse("<light_purple><bold>" + AHFormatter.toSmallCaps("Auction History")),
+                ConfigManager.parse("<gray>View your recent sales & buys.")));
     }
 
     public void cycleSort() {

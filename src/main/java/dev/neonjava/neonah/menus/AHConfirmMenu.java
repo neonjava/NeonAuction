@@ -1,5 +1,6 @@
 package dev.neonjava.neonah.menus;
 
+import dev.neonjava.neonah.managers.ConfigManager;
 import dev.neonjava.neonah.models.AHItem;
 import lombok.Getter;
 import org.bukkit.Material;
@@ -7,8 +8,6 @@ import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
-
-import java.util.stream.IntStream;
 
 /**
  * AHConfirmMenu - Enhanced with Shulker Box Previews.
@@ -44,13 +43,15 @@ public class AHConfirmMenu extends AHBaseMenu {
 
         // Action Buttons
         inventory.setItem(confirmSlot, create(Material.LIME_STAINED_GLASS_PANE,
-                mm.deserialize(type.equals("buy") ? "<green><bold>✔ Confirm Purchase" : "<red><bold>✔ Confirm Removal"),
-                mm.deserialize("<gray>Click to process.")));
+                ConfigManager
+                        .parse(type.equals("buy") ? "<green><bold>✔ Confirm Purchase" : "<red><bold>✔ Confirm Removal"),
+                ConfigManager.parse("<gray>Click to process.")));
 
         inventory.setItem(itemSlot, item.getItem());
 
-        inventory.setItem(cancelSlot, create(Material.RED_STAINED_GLASS_PANE, mm.deserialize("<red><bold>✖ Cancel"),
-                mm.deserialize("<gray>Click to go back.")));
+        inventory.setItem(cancelSlot,
+                create(Material.RED_STAINED_GLASS_PANE, ConfigManager.parse("<red><bold>✖ Cancel"),
+                        ConfigManager.parse("<gray>Click to go back.")));
 
         // Shulker Contents (Rows 3, 4, 5)
         if (isShulker && item.getItem().getItemMeta() instanceof BlockStateMeta bsm) {

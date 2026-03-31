@@ -38,9 +38,9 @@ public abstract class AHBaseMenu implements InventoryHolder {
     }
 
     protected ItemStack create(Material mat, String name, String... lore) {
-        return create(mat, net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(name),
+        return create(mat, dev.neonjava.neonah.managers.ConfigManager.parse(name),
                 java.util.Arrays.stream(lore)
-                        .map(l -> net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(l))
+                        .map(dev.neonjava.neonah.managers.ConfigManager::parse)
                         .toArray(net.kyori.adventure.text.Component[]::new));
     }
 }
