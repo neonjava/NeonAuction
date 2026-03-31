@@ -1,6 +1,7 @@
 package dev.neonjava.neonah.menus;
 
 import dev.neonjava.neonah.managers.AHManager;
+import dev.neonjava.neonah.managers.ConfigManager;
 import dev.neonjava.neonah.models.AHItem;
 import dev.neonjava.neonah.utils.AHFormatter;
 import org.bukkit.Bukkit;
@@ -73,21 +74,29 @@ public class AHMainMenu extends AHBaseMenu {
                 lore.add("§8§m                    ");
 
                 boolean isHighValue = item.getPrice() >= HIGH_PRICE_THRESHOLD;
-                String priceColor = isHighValue ? "§6§l" : "§e";
 
-                lore.add("§7Seller: §f" + Bukkit.getOfflinePlayer(item.getSeller()).getName());
-                lore.add("§7Price: " + priceColor + AHFormatter.formatPrice(item.getPrice()));
+                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.seller")
+                        .replace("%name%", Bukkit.getOfflinePlayer(item.getSeller()).getName()))));
+
+                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.price")
+                        .replace("%price%", AHFormatter.formatPrice(item.getPrice())))));
+
                 if (isHighValue)
-                    lore.add("§6✦ High Value Listing");
-                lore.add("§7Expires in: §c" + AHFormatter.formatTimeLeft(item.getListedAt()));
+                    lore.add(AHFormatter
+                            .toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.high-value"))));
+
+                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.expires")
+                        .replace("%time%", AHFormatter.formatTimeLeft(item.getListedAt())))));
                 lore.add("");
 
                 if (admin)
                     lore.add("§c§l⚠ Admin: Click to Force Remove");
                 else if (item.getSeller().equals(player.getUniqueId()))
-                    lore.add("§c▶ Click to cancel your listing");
+                    lore.add(AHFormatter
+                            .toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.cancel"))));
                 else
-                    lore.add("§a▶ Click to purchase");
+                    lore.add(
+                            AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.buy"))));
 
                 meta.setLore(lore);
 

@@ -1,0 +1,18 @@
+# NeonAH Config
+compact-price: true
+allow-custom-named-items: true # Whether to allow items with custom display names to be sold
+allowed-custom-names:
+  - "SHARD BOOSTER"
+  - "AMETHYST"
+  - "SPAWNER"
+# Add common keywords that identify special SMP items
+
+# Listing limits per permission node
+limits:
+  "neonah.limit.100": 100
+  "neonah.limit.50": 50
+  "neonah.limit.25": 25
+  "neonah.limit.10": 10
+  "neonah.limit.5": 5
+  "neonah.limit.3": 3
+  "default": 3

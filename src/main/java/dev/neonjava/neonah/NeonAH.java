@@ -42,6 +42,7 @@ public class NeonAH extends JavaPlugin {
             return;
         }
 
+        dev.neonjava.neonah.managers.ConfigManager.get().init();
         AHManager.get().init();
 
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {

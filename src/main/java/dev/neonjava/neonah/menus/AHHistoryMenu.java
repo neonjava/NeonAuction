@@ -50,8 +50,9 @@ public class AHHistoryMenu extends AHBaseMenu {
             inventory.setItem(i - start, create(iconMat, status + " §f" + hi.getItem().getType(),
                     "§8§m                    ",
                     userTag + userName,
-                    "§7Price: §e" + AHFormatter.formatPrice(hi.getPrice()),
-                    "§7Date: §8" + new Date(hi.getTimestamp()).toString(),
+                    AHFormatter.stripBold("§7Price: §e" + AHFormatter.formatPrice(hi.getPrice())),
+                    AHFormatter.stripBold("§7Date: §8"
+                            + new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date(hi.getTimestamp()))),
                     "",
                     previewHint));
         }

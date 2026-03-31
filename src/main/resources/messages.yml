@@ -1,0 +1,26 @@
+# NeonAH Messages
+prefix: "&e&l[AH] "
+no-permission: "&c&l[AH] &cYou don't have permission!"
+at-limit: "&c&l[AH] &cYou have reached your listing limit (&e%limit%&c). Cancel a listing first."
+item-listed: "&a&l[AH] &aItem listed for &e%price% &7(%compact%&7)"
+hold-item: "&cYou must hold an item to sell it!"
+invalid-price: "&cInvalid price! Use a number or suffixes like 100k, 1m, 1b."
+renamed-blocked: "&c&l[AH] &cRenamed items cannot be sold! (Only special SMP items allowed)"
+at-inventory-full: "&c&l[AH] &cYour inventory is full!"
+insufficient-funds: "&c&l[AH] &cInsufficient funds to complete purchase!"
+purchase-success: "&a&l[AH] &aSuccessfully purchased!"
+
+# %name% - Player name
+# %item% - Display name or Material name
+# %price% - Reformatted price
+global-broadcast: "<gold><bold>[AH] <white>%name% <gray>has listed an <white><item> <gray>for <yellow>%price%!"
+buy-broadcast: "<gold><bold>[AH] <white>%buyer% <gray>has bought an <white><item> <gray>from <white>%seller% <gray>for <yellow>%price%!"
+# Small caps lore (formatted in code via AHFormatter.toSmallCaps)
+lore:
+  price: "&7Price: &e%price%"
+  seller: "&7Seller: &f%name%"
+  expires: "&7Expires in: &c%time%"
+  reclaim: "&e▶ Click to reclaim all items"
+  cancel: "&c▶ Click to cancel listing"
+  buy: "&a▶ Click to purchase"
+  high-value: "&6✦ High Value Listing"

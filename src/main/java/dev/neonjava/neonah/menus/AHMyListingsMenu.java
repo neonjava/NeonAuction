@@ -1,6 +1,7 @@
 package dev.neonjava.neonah.menus;
 
 import dev.neonjava.neonah.managers.AHManager;
+import dev.neonjava.neonah.managers.ConfigManager;
 import dev.neonjava.neonah.models.AHItem;
 import dev.neonjava.neonah.utils.AHFormatter;
 import org.bukkit.Material;
@@ -55,8 +56,9 @@ public class AHMyListingsMenu extends AHBaseMenu {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
                 lore.add("§8§m                    ");
                 lore.add("§7Type: §a§l" + AHFormatter.toSmallCaps("Active"));
-                lore.add("§7Price: §e" + AHFormatter.formatPrice(item.getPrice()));
-                lore.add("§c▶ Click to cancel listing");
+                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.price")
+                        .replace("%price%", AHFormatter.formatPrice(item.getPrice())))));
+                lore.add(AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.cancel"))));
                 meta.setLore(lore);
                 stack.setItemMeta(meta);
             }
@@ -72,7 +74,8 @@ public class AHMyListingsMenu extends AHBaseMenu {
                 List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
                 lore.add("§8§m                    ");
                 lore.add("§7Type: §c§l" + AHFormatter.toSmallCaps("Unlisted / Reclaim"));
-                lore.add("§e▶ Click to reclaim all items");
+                lore.add(
+                        AHFormatter.toSmallCaps(AHFormatter.stripBold(ConfigManager.get().getMessage("lore.reclaim"))));
                 meta.setLore(lore);
                 stack.setItemMeta(meta);
             }

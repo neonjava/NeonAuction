@@ -3,6 +3,7 @@ package dev.neonjava.neonah.utils;
 import dev.neonjava.neonah.NeonAH;
 import dev.neonjava.neonah.models.AHItem;
 import dev.neonjava.neonah.managers.AHManager;
+import dev.neonjava.neonah.managers.ConfigManager;
 import dev.neonjava.neonah.menus.AHConfirmMenu;
 import net.kyori.adventure.key.Key;
 import org.bukkit.Bukkit;
@@ -52,12 +53,12 @@ public class AHDialogUtils {
                 if (!AHManager.get().getItems().contains(item))
                         return;
                 if (p.getInventory().firstEmpty() == -1) {
-                        p.sendMessage("§c§l[AH] §cInventory full!");
+                        p.sendMessage(ConfigManager.get().getMessage("at-inventory-full"));
                         return;
                 }
                 double balance = NeonAH.getEcon().getBalance(p);
                 if (balance < item.getPrice()) {
-                        p.sendMessage("§c§l[AH] §cInsufficient funds!");
+                        p.sendMessage(ConfigManager.get().getMessage("insufficient-funds"));
                         return;
                 }
 
@@ -66,7 +67,29 @@ public class AHDialogUtils {
                 AHManager.get().recordSale(item.getSeller(), p.getUniqueId(), item.getPrice(), item.getItem());
                 AHManager.get().removeItem(item);
                 p.getInventory().addItem(item.getItem());
-                p.sendMessage("§a§l[AH] §aSuccessfully purchased!");
+
+                // Broadcast buy message (no bold, uses messages.yml)
+                String broadcastMsg = ConfigManager.get().getMessage("buy-broadcast")
+                                .replace("%buyer%", p.getName())
+                                .replace("%seller%", Bukkit.getOfflinePlayer(item.getSeller()).getName())
+                                .replace("%price%", AHFormatter.formatPrice(item.getPrice()));
+
+                Bukkit.getServer()
+                                .sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+                                                AHFormatter.stripBold(broadcastMsg),
+                                                net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component(
+                                                                "item",
+                                                                (item.getItem().getItemMeta() != null && item.getItem()
+                                                                                .getItemMeta().hasDisplayName()
+                                                                                                ? item.getItem().getItemMeta()
+                                                                                                                .displayName()
+                                                                                                : net.kyori.adventure.text.Component
+                                                                                                                .translatable(item
+                                                                                                                                .getItem()
+                                                                                                                                .getType()
+                                                                                                                                .translationKey())))));
+
+                p.sendMessage(ConfigManager.get().getMessage("purchase-success"));
                 p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         }
 

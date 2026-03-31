@@ -100,15 +100,21 @@ public class AHManager {
     }
 
     // --- Permission-based limits ---
-    private static final int[] LIMIT_TIERS = { 100, 50, 25, 10, 5, 3, 1 };
-    private static final int DEFAULT_LIMIT = 3;
-
     public int getLimit(org.bukkit.entity.Player p) {
-        for (int tier : LIMIT_TIERS) {
-            if (p.hasPermission("neonah.limit." + tier))
-                return tier;
+        org.bukkit.configuration.ConfigurationSection limits = dev.neonjava.neonah.managers.ConfigManager.get()
+                .getConfig().getConfigurationSection("limits");
+        if (limits == null)
+            return 3;
+
+        int max = limits.getInt("default", 3);
+        for (String key : limits.getKeys(false)) {
+            if (key.equals("default"))
+                continue;
+            if (p.hasPermission(key)) {
+                max = Math.max(max, limits.getInt(key));
+            }
         }
-        return DEFAULT_LIMIT;
+        return max;
     }
 
     public boolean isAtLimit(org.bukkit.entity.Player p) {

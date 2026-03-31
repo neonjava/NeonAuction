@@ -7,6 +7,12 @@ public class AHFormatter {
     private static final DecimalFormat PRICE_FORMAT = new DecimalFormat("#,###.##");
 
     public static String formatPrice(double price) {
+        if (price >= 1_000_000_000)
+            return formatCompact(price / 1_000_000_000, "b");
+        if (price >= 1_000_000)
+            return formatCompact(price / 1_000_000, "m");
+        if (price >= 1_000)
+            return formatCompact(price / 1_000, "k");
         return PRICE_FORMAT.format(price) + "₹";
     }
 
@@ -32,6 +38,16 @@ public class AHFormatter {
         }
     }
 
+    private static String formatCompact(double val, String suffix) {
+        return (val == (long) val ? String.format("%d", (long) val) : String.format("%.1f", val)) + suffix + "₹";
+    }
+
+    public static String stripBold(String text) {
+        if (text == null)
+            return null;
+        return text.replace("§l", "").replace("§L", "");
+    }
+
     public static String toSmallCaps(String text) {
         if (text == null)
             return "";
@@ -44,7 +60,7 @@ public class AHFormatter {
                 case 'c' -> sb.append('ᴄ');
                 case 'd' -> sb.append('ᴅ');
                 case 'e' -> sb.append('ᴇ');
-                case 'f' -> sb.append('ғ');
+                case 'f' -> sb.append('ꜰ');
                 case 'g' -> sb.append('ɢ');
                 case 'h' -> sb.append('ʜ');
                 case 'i' -> sb.append('ɪ');
@@ -57,7 +73,7 @@ public class AHFormatter {
                 case 'p' -> sb.append('ᴘ');
                 case 'q' -> sb.append('ǫ');
                 case 'r' -> sb.append('ʀ');
-                case 's' -> sb.append('s');
+                case 's' -> sb.append('ѕ');
                 case 't' -> sb.append('ᴛ');
                 case 'u' -> sb.append('ᴜ');
                 case 'v' -> sb.append('ᴠ');

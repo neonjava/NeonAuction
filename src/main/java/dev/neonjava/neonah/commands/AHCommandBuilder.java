@@ -1,13 +1,11 @@
 package dev.neonjava.neonah.commands;
 
-import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.neonjava.neonah.NeonAH;
 import dev.neonjava.neonah.managers.AHManager;
 import dev.neonjava.neonah.models.AHItem;
 import dev.neonjava.neonah.menus.AHMainMenu;
-import dev.neonjava.neonah.menus.AHHistoryMenu;
 import dev.neonjava.neonah.utils.AHFormatter;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -19,10 +17,8 @@ import org.bukkit.inventory.ItemStack;
 
 @SuppressWarnings("UnstableApiUsage")
 public class AHCommandBuilder {
-    private final NeonAH plugin;
 
     public AHCommandBuilder(NeonAH plugin) {
-        this.plugin = plugin;
     }
 
     public LiteralCommandNode<CommandSourceStack> buildMain(String name) {
@@ -52,14 +48,20 @@ public class AHCommandBuilder {
                                     }
 
                                     if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
-                                        p.sendMessage("§c§l[AH] §cRenamed items cannot be sold in the auction house!");
-                                        return 0;
-                                    }
-
-                                    if (AHManager.get().isAtLimit(p)) {
-                                        p.sendMessage("§c§l[AH] §cYou have reached your listing limit (§e"
-                                                + AHManager.get().getLimit(p) + "§c). Cancel a listing first.");
-                                        return 0;
+                                        String displayName = item.getItemMeta().getDisplayName().toUpperCase();
+                                        boolean allowed = false;
+                                        for (String special : dev.neonjava.neonah.managers.ConfigManager.get()
+                                                .getConfig().getStringList("allowed-custom-names")) {
+                                            if (displayName.contains(special.toUpperCase())) {
+                                                allowed = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!allowed) {
+                                            p.sendMessage(dev.neonjava.neonah.managers.ConfigManager.get()
+                                                    .getMessage("renamed-blocked"));
+                                            return 0;
+                                        }
                                     }
 
                                     AHManager.get().addItem(new AHItem(p.getUniqueId(), item.clone(), price));
@@ -68,12 +70,15 @@ public class AHCommandBuilder {
                                     // Debug signal
                                     p.getServer().getLogger().info("[AH] Broadcasting listing from " + p.getName());
 
-                                    // Broadcast new auction
+                                    // Broadcast new auction (no bold, uses messages.yml)
+                                    String broadcastMsg = dev.neonjava.neonah.managers.ConfigManager.get()
+                                            .getMessage("global-broadcast")
+                                            .replace("%name%", p.getName())
+                                            .replace("%price%", AHFormatter.formatPrice(price));
+
                                     p.getServer().sendMessage(
                                             net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
-                                                    "<gold><bold>[AH] <white>" + p.getName()
-                                                            + " <gray>has listed an <white><item> <gray>for <yellow>"
-                                                            + AHFormatter.formatPrice(price) + "!",
+                                                    AHFormatter.stripBold(broadcastMsg),
                                                     net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
                                                             .component("item", (item.getItemMeta() != null
                                                                     && item.getItemMeta().hasDisplayName()
@@ -82,8 +87,10 @@ public class AHCommandBuilder {
                                                                                     .translatable(item.getType()
                                                                                             .translationKey())))));
 
-                                    p.sendMessage("§a§l[AH] §aItem listed for "
-                                            + dev.neonjava.neonah.utils.AHFormatter.formatPrice(price));
+                                    p.sendMessage(
+                                            dev.neonjava.neonah.managers.ConfigManager.get().getMessage("item-listed")
+                                                    .replace("%price%", String.valueOf(price))
+                                                    .replace("%compact%", AHFormatter.formatPrice(price)));
                                     return 1;
                                 })))
                 .build();
@@ -97,6 +104,12 @@ public class AHCommandBuilder {
                         new AHMainMenu(p, true).open(p);
                     return 1;
                 })
+                .then(Commands.literal("reload")
+                        .executes(ctx -> {
+                            dev.neonjava.neonah.managers.ConfigManager.get().reload();
+                            ctx.getSource().getSender().sendMessage("§a§l[AH] §aConfiguration and Messages reloaded!");
+                            return 1;
+                        }))
                 .then(Commands.literal("history")
                         .then(Commands.argument("player", StringArgumentType.string())
                                 .executes(ctx -> {
