@@ -1,17 +1,21 @@
-name: NeonAH
-version: ${version}
-main: dev.neonjava.neonah.NeonAH
 api-version: '1.21'
-description: A powerful Auction plugin with Bedrock support.
 author: NeonJava
 dependencies:
   server:
-    packetevents:
+    Geyser-Spigot:
+      load: BEFORE
+      required: false
+    NeonCore:
       load: BEFORE
       required: true
     Vault:
       load: BEFORE
       required: true
-    Geyser-Spigot:
+    packetevents:
       load: BEFORE
-      required: false
+      required: true
+description: A powerful Auction plugin with Bedrock support.
+folia-supported: true
+main: dev.neonjava.neonah.NeonAH
+name: NeonAH
+version: ${version}

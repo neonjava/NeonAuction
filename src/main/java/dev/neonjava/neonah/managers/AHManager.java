@@ -12,6 +12,36 @@ public class AHManager {
     private final AHStorage storage = new AHStorage();
     private final List<AHItem> activeItems = new CopyOnWriteArrayList<>();
     private final Map<UUID, PendingAction> pending = new ConcurrentHashMap<>();
+    private dev.neon.coreplugin.CorePlugin core;
+
+    private void setupRedis() {
+        core = (dev.neon.coreplugin.CorePlugin) org.bukkit.Bukkit.getPluginManager().getPlugin("NeonCore");
+        if (core != null) {
+            core.getSyncManager().registerHandler(dev.neon.coreplugin.sync.SyncManager.CHANNEL_AH,
+                    (channel, message) -> {
+                        // message format: action:id
+                        String[] parts = message.split(":");
+                        if (parts.length < 2)
+                            return;
+
+                        String action = parts[0];
+                        if (action.equals("refresh")) {
+                            refreshFromDB();
+                        }
+                    });
+        }
+    }
+
+    private void refreshFromDB() {
+        activeItems.clear();
+        activeItems.addAll(storage.loadActive());
+    }
+
+    private void notifySync() {
+        if (core != null) {
+            core.getRedisManager().publish(dev.neon.coreplugin.sync.SyncManager.CHANNEL_AH, "refresh:all");
+        }
+    }
 
     public static class PendingAction {
         public final String type;
@@ -35,6 +65,7 @@ public class AHManager {
 
     public void init() {
         storage.init();
+        setupRedis();
         activeItems.addAll(storage.loadActive());
     }
 
@@ -53,11 +84,13 @@ public class AHManager {
     public void addItem(AHItem item) {
         activeItems.add(item);
         storage.saveItem(item);
+        notifySync();
     }
 
     public void removeItem(AHItem item) {
         activeItems.remove(item);
         storage.deleteItem(item.getId());
+        notifySync();
     }
 
     public void markUnclaimed(UUID uuid, ItemStack item) {

@@ -31,6 +31,9 @@ public class ConfigManager {
 
     public void init() {
         plugin.saveDefaultConfig();
+        plugin.getConfig().addDefault("license-key", "NEON-AHHH-0000");
+        plugin.getConfig().options().copyDefaults(true);
+        plugin.saveConfig();
         reload();
     }
 

@@ -48,19 +48,40 @@ public class AHCommandBuilder {
                                     }
 
                                     if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
-                                        String displayName = item.getItemMeta().getDisplayName().toUpperCase();
-                                        boolean allowed = false;
+                                        org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+                                        String displayName = meta.getDisplayName().toUpperCase();
+
+                                        // Whitelist check
+                                        boolean whitelisted = false;
                                         for (String special : dev.neonjava.neonah.managers.ConfigManager.get()
                                                 .getConfig().getStringList("allowed-custom-names")) {
                                             if (displayName.contains(special.toUpperCase())) {
-                                                allowed = true;
+                                                whitelisted = true;
                                                 break;
                                             }
                                         }
-                                        if (!allowed) {
-                                            p.sendMessage(dev.neonjava.neonah.managers.ConfigManager.get()
-                                                    .getMessage("renamed-blocked"));
-                                            return 0;
+
+                                        if (!whitelisted) {
+                                            // Anvil Detection Logic
+                                            boolean isAnvilRenamed = false;
+
+                                            // 1. Check for RepairCost (Anvils always add this)
+                                            if (meta instanceof org.bukkit.inventory.meta.Repairable r
+                                                    && r.hasRepairCost() && r.getRepairCost() > 0) {
+                                                isAnvilRenamed = true;
+                                            }
+
+                                            // 2. Check for Italicization (Default for anvil renames)
+                                            if (meta.displayName() != null && meta.displayName().hasDecoration(
+                                                    net.kyori.adventure.text.format.TextDecoration.ITALIC)) {
+                                                isAnvilRenamed = true;
+                                            }
+
+                                            if (isAnvilRenamed) {
+                                                p.sendMessage(dev.neonjava.neonah.managers.ConfigManager.get()
+                                                        .getMessage("renamed-blocked"));
+                                                return 0;
+                                            }
                                         }
                                     }
 

@@ -43,6 +43,12 @@ public class NeonAH extends JavaPlugin {
         }
 
         dev.neonjava.neonah.managers.ConfigManager.get().init();
+
+        String key = dev.neonjava.neonah.managers.ConfigManager.get().getConfig().getString("license-key",
+                "NEON-AHHH-0000");
+        Bukkit.getLogger().info("Verifying NeonLock AH License...");
+        new dev.neonjava.neonah.utils.NeonLicense(this, key).verify();
+
         AHManager.get().init();
 
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {

@@ -11,52 +11,49 @@ import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class AHStorage {
-    private Connection connection;
+    private dev.neon.coreplugin.CorePlugin core;
 
     public void init() {
-        try {
-            File dataFolder = NeonAH.get().getDataFolder();
-            if (!dataFolder.exists())
-                dataFolder.mkdirs();
+        core = (dev.neon.coreplugin.CorePlugin) org.bukkit.Bukkit.getPluginManager().getPlugin("NeonCore");
+        if (core == null) {
+            org.bukkit.Bukkit.getLogger().severe("[NeonAH] CorePlugin not found! Cross-server sync disabled.");
+        } else {
+            createTables();
+        }
+    }
 
-            Class.forName("org.sqlite.JDBC");
-            connection = DriverManager
-                    .getConnection("jdbc:sqlite:" + new File(dataFolder, "auction.db").getAbsolutePath());
+    private Connection getConnection() throws SQLException {
+        if (core != null)
+            return core.getDatabaseManager().getConnection();
+        throw new SQLException("Core connection not available");
+    }
 
-            try (Statement s = connection.createStatement()) {
-                s.execute("CREATE TABLE IF NOT EXISTS active_items (" +
-                        "id TEXT PRIMARY KEY, seller TEXT, price DOUBLE, item TEXT, listed_at LONG)");
-
-                s.execute("CREATE TABLE IF NOT EXISTS unclaimed_items (" +
-                        "id TEXT PRIMARY KEY, seller TEXT, item TEXT)");
-
-                s.execute("CREATE TABLE IF NOT EXISTS history (" +
-                        "id TEXT PRIMARY KEY, seller TEXT, buyer TEXT, price DOUBLE, item_blob TEXT, sold_at LONG)");
-
-                // Migration: Check if item_blob exists, if not, rename item_name or add it
-                try {
-                    s.execute("ALTER TABLE history ADD COLUMN item_blob TEXT");
-                } catch (Exception ignored) {
-                }
-            }
-        } catch (Exception e) {
+    private void createTables() {
+        try (Connection c = getConnection(); Statement s = c.createStatement()) {
+            s.execute("CREATE TABLE IF NOT EXISTS ah_active_items (" +
+                    "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), price DOUBLE, item_data LONGTEXT, listed_at BIGINT)");
+            s.execute("CREATE TABLE IF NOT EXISTS ah_unclaimed_items (" +
+                    "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), item_data LONGTEXT)");
+            s.execute("CREATE TABLE IF NOT EXISTS ah_history (" +
+                    "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), buyer VARCHAR(36), price DOUBLE, item_data LONGTEXT, sold_at BIGINT)");
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
     public List<AHItem> loadActive() {
         List<AHItem> items = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM active_items")) {
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement("SELECT * FROM ah_active_items")) {
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                ItemStack is = deserialize(rs.getString("item"));
+                ItemStack is = deserialize(rs.getString("item_data"));
                 if (is != null) {
                     items.add(new AHItem(
                             UUID.fromString(rs.getString("id")),
@@ -74,11 +71,13 @@ public class AHStorage {
 
     public List<ItemStack> loadUnclaimed(UUID seller) {
         List<ItemStack> items = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT item FROM unclaimed_items WHERE seller = ?")) {
+        try (Connection c = getConnection();
+                PreparedStatement ps = c
+                        .prepareStatement("SELECT item_data FROM ah_unclaimed_items WHERE seller = ?")) {
             ps.setString(1, seller.toString());
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                ItemStack is = deserialize(rs.getString("item"));
+                ItemStack is = deserialize(rs.getString("item_data"));
                 if (is != null)
                     items.add(is);
             }
@@ -89,8 +88,8 @@ public class AHStorage {
     }
 
     public void saveItem(AHItem item) {
-        try (PreparedStatement ps = connection
-                .prepareStatement("INSERT OR REPLACE INTO active_items VALUES (?,?,?,?,?)")) {
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement("REPLACE INTO ah_active_items VALUES (?,?,?,?,?)")) {
             ps.setString(1, item.getId().toString());
             ps.setString(2, item.getSeller().toString());
             ps.setDouble(3, item.getPrice());
@@ -103,7 +102,8 @@ public class AHStorage {
     }
 
     public void deleteItem(UUID id) {
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM active_items WHERE id = ?")) {
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement("DELETE FROM ah_active_items WHERE id = ?")) {
             ps.setString(1, id.toString());
             ps.execute();
         } catch (SQLException e) {
@@ -112,8 +112,9 @@ public class AHStorage {
     }
 
     public void addUnclaimed(UUID seller, ItemStack item) {
-        try (PreparedStatement ps = connection
-                .prepareStatement("INSERT INTO unclaimed_items (id, seller, item) VALUES (?,?,?)")) {
+        try (Connection c = getConnection();
+                PreparedStatement ps = c
+                        .prepareStatement("INSERT INTO ah_unclaimed_items (id, seller, item_data) VALUES (?,?,?)")) {
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, seller.toString());
             ps.setString(3, serialize(item));
@@ -124,7 +125,8 @@ public class AHStorage {
     }
 
     public void clearUnclaimed(UUID seller) {
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM unclaimed_items WHERE seller = ?")) {
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement("DELETE FROM ah_unclaimed_items WHERE seller = ?")) {
             ps.setString(1, seller.toString());
             ps.execute();
         } catch (SQLException e) {
@@ -133,8 +135,8 @@ public class AHStorage {
     }
 
     public void recordHistory(UUID seller, UUID buyer, double price, ItemStack item) {
-        String sql = "INSERT INTO history (id, seller, buyer, price, item_blob, sold_at) VALUES (?,?,?,?,?,?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        String sql = "INSERT INTO ah_history (id, seller, buyer, price, item_data, sold_at) VALUES (?,?,?,?,?,?)";
+        try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, seller.toString());
             ps.setString(3, buyer.toString());
@@ -149,16 +151,16 @@ public class AHStorage {
 
     public List<AHHistoryItem> getHistory(UUID player) {
         List<AHHistoryItem> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement(
-                "SELECT * FROM history WHERE seller = ? OR buyer = ? ORDER BY sold_at DESC LIMIT 100")) {
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement(
+                        "SELECT * FROM ah_history WHERE seller = ? OR buyer = ? ORDER BY sold_at DESC LIMIT 100")) {
             ps.setString(1, player.toString());
             ps.setString(2, player.toString());
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                ItemStack is = deserialize(rs.getString("item_blob"));
+                ItemStack is = deserialize(rs.getString("item_data"));
                 if (is == null)
-                    is = new ItemStack(Material.PAPER); // Fail-safe for old entries
-
+                    is = new ItemStack(Material.PAPER);
                 list.add(new AHHistoryItem(
                         UUID.fromString(rs.getString("seller")),
                         UUID.fromString(rs.getString("buyer")),
@@ -173,12 +175,6 @@ public class AHStorage {
     }
 
     public void shutdown() {
-        try {
-            if (connection != null && !connection.isClosed())
-                connection.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
     }
 
     private String serialize(ItemStack item) {
