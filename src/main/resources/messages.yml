@@ -11,6 +11,7 @@ renamed-blocked: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Re
 at-inventory-full: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Your inventory is full!"
 insufficient-funds: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Insufficient funds to complete purchase!"
 purchase-success: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Successfully purchased!"
+item-already-bought: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>This item was just bought by another player!"
 
 # %name% - Player name
 # %item% - Display name or Material name

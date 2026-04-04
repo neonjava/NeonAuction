@@ -50,58 +50,100 @@ public class AHDialogUtils {
         }
 
         public static void processPurchase(Player p, AHItem item) {
-                if (!AHManager.get().getItems().contains(item))
-                        return;
                 if (p.getInventory().firstEmpty() == -1) {
                         p.sendMessage(ConfigManager.get().getMessage("at-inventory-full"));
                         return;
                 }
-                double balance = NeonAH.getEcon().getBalance(p);
-                if (balance < item.getPrice()) {
-                        p.sendMessage(ConfigManager.get().getMessage("insufficient-funds"));
-                        return;
-                }
 
-                NeonAH.getEcon().withdrawPlayer(p, item.getPrice());
-                NeonAH.getEcon().depositPlayer(Bukkit.getOfflinePlayer(item.getSeller()), item.getPrice());
-                AHManager.get().recordSale(item.getSeller(), p.getUniqueId(), item.getPrice(), item.getItem());
-                AHManager.get().removeItem(item);
-                p.getInventory().addItem(item.getItem());
+                dev.neon.coreplugin.sync.SyncManager sync = dev.neon.coreplugin.CorePlugin
+                                .getPlugin(dev.neon.coreplugin.CorePlugin.class).getSyncManager();
+                String lockKey = "ah_lock:" + item.getId();
 
-                // Broadcast buy message (no bold, uses messages.yml)
-                String broadcastMsg = ConfigManager.get().getMessage("buy-broadcast")
-                                .replace("%buyer%", p.getName())
-                                .replace("%seller%", Bukkit.getOfflinePlayer(item.getSeller()).getName())
-                                .replace("%price%", AHFormatter.formatPrice(item.getPrice()));
+                sync.acquireLock(lockKey).thenAccept(acquired -> {
+                        if (!acquired) {
+                                p.sendMessage(ConfigManager.get().getMessage("item-already-bought"));
+                                return;
+                        }
 
-                Bukkit.getServer()
-                                .sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
-                                                AHFormatter.stripBold(broadcastMsg),
-                                                net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.component(
-                                                                "item",
-                                                                (item.getItem().getItemMeta() != null && item.getItem()
-                                                                                .getItemMeta().hasDisplayName()
-                                                                                                ? item.getItem().getItemMeta()
-                                                                                                                .displayName()
-                                                                                                : net.kyori.adventure.text.Component
-                                                                                                                .translatable(item
-                                                                                                                                .getItem()
-                                                                                                                                .getType()
-                                                                                                                                .translationKey())))));
+                        try {
+                                // Re-verify existence in DB
+                                if (!AHManager.get().getStorage().exists(item.getId())) {
+                                        p.sendMessage(ConfigManager.get().getMessage("item-already-bought"));
+                                        return;
+                                }
 
-                p.sendMessage(ConfigManager.get().getMessage("purchase-success"));
-                p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                                double balance = NeonAH.getEcon().getBalance(p);
+                                if (balance < item.getPrice()) {
+                                        p.sendMessage(ConfigManager.get().getMessage("insufficient-funds"));
+                                        return;
+                                }
+
+                                // Transactional actions
+                                NeonAH.getEcon().withdrawPlayer(p, item.getPrice());
+                                NeonAH.getEcon().depositPlayer(Bukkit.getOfflinePlayer(item.getSeller()),
+                                                item.getPrice());
+                                AHManager.get().recordSale(item.getSeller(), p.getUniqueId(), item.getPrice(),
+                                                item.getItem());
+
+                                // Final item removal and distribution
+                                AHManager.get().removeItem(item);
+                                p.getInventory().addItem(item.getItem());
+
+                                p.sendMessage(ConfigManager.get().getMessage("purchase-success"));
+                                p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+
+                                // Broadcast
+                                String broadcastMsg = ConfigManager.get().getMessage("buy-broadcast")
+                                                .replace("%buyer%", p.getName())
+                                                .replace("%seller%",
+                                                                Bukkit.getOfflinePlayer(item.getSeller()).getName())
+                                                .replace("%price%", AHFormatter.formatPrice(item.getPrice()));
+
+                                Bukkit.getServer().sendMessage(net.kyori.adventure.text.minimessage.MiniMessage
+                                                .miniMessage().deserialize(
+                                                                AHFormatter.stripBold(broadcastMsg),
+                                                                net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+                                                                                .component(
+                                                                                                "item",
+                                                                                                (item.getItem().getItemMeta() != null
+                                                                                                                && item.getItem()
+                                                                                                                                .getItemMeta()
+                                                                                                                                .hasDisplayName()
+                                                                                                                                                ? item.getItem().getItemMeta()
+                                                                                                                                                                .displayName()
+                                                                                                                                                : net.kyori.adventure.text.Component
+                                                                                                                                                                .translatable(item
+                                                                                                                                                                                .getItem()
+                                                                                                                                                                                .getType()
+                                                                                                                                                                                .translationKey())))));
+                        } finally {
+                                sync.releaseLock(lockKey);
+                        }
+                });
         }
 
         public static void processRemoval(Player p, AHItem item) {
-                if (!AHManager.get().getItems().contains(item))
-                        return;
                 if (p.getInventory().firstEmpty() == -1) {
                         p.sendMessage("§cInventory full!");
                         return;
                 }
-                AHManager.get().removeItem(item);
-                p.getInventory().addItem(item.getItem());
-                p.sendMessage("§a§l[AH] §aListing removed.");
+
+                dev.neon.coreplugin.sync.SyncManager sync = dev.neon.coreplugin.CorePlugin
+                                .getPlugin(dev.neon.coreplugin.CorePlugin.class).getSyncManager();
+                String lockKey = "ah_lock:" + item.getId();
+
+                sync.acquireLock(lockKey).thenAccept(acquired -> {
+                        if (!acquired)
+                                return;
+                        try {
+                                if (!AHManager.get().getStorage().exists(item.getId()))
+                                        return;
+                                AHManager.get().removeItem(item);
+                                p.getInventory().addItem(item.getItem());
+                                p.sendMessage("§a§l[AH] §aListing removed.");
+                        } finally {
+                                sync.releaseLock(lockKey);
+                        }
+                });
         }
 }

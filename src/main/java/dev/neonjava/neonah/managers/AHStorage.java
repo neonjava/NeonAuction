@@ -101,6 +101,16 @@ public class AHStorage {
         }
     }
 
+    public boolean exists(UUID id) {
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement("SELECT 1 FROM ah_active_items WHERE id = ?")) {
+            ps.setString(1, id.toString());
+            return ps.executeQuery().next();
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
     public void deleteItem(UUID id) {
         try (Connection c = getConnection();
                 PreparedStatement ps = c.prepareStatement("DELETE FROM ah_active_items WHERE id = ?")) {

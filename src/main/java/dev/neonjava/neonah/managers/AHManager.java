@@ -77,6 +77,10 @@ public class AHManager {
         return activeItems;
     }
 
+    public AHStorage getStorage() {
+        return storage;
+    }
+
     public List<ItemStack> getUnclaimed(UUID uuid) {
         return storage.loadUnclaimed(uuid);
     }
@@ -85,6 +89,26 @@ public class AHManager {
         activeItems.add(item);
         storage.saveItem(item);
         notifySync();
+
+        // Send global broadcast via Redis RAW chat channel
+        if (core != null) {
+            String sellerName = org.bukkit.Bukkit.getOfflinePlayer(item.getSeller()).getName();
+            if (sellerName == null)
+                sellerName = "Unknown";
+
+            String itemName = item.getItem().getType().name().replace("_", " ").toLowerCase();
+            if (item.getItem().hasItemMeta() && item.getItem().getItemMeta().hasDisplayName()) {
+                itemName = item.getItem().getItemMeta().getDisplayName();
+            }
+
+            String price = dev.neonjava.neonah.utils.AHFormatter.formatPrice(item.getPrice());
+
+            String broadcast = "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <white>" + sellerName
+                    + " <gray>has listed <white>" + itemName + " <gray>for <gradient:#f6d365:#fda085>" + price
+                    + "</gradient>!";
+
+            core.getRedisManager().publish(dev.neon.coreplugin.sync.SyncManager.CHANNEL_CHAT, "RAW:" + broadcast);
+        }
     }
 
     public void removeItem(AHItem item) {
