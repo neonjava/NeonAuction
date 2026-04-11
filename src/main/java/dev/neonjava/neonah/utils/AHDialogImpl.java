@@ -9,6 +9,7 @@ import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.Player;
@@ -100,6 +101,6 @@ public class AHDialogImpl {
     }
 
     private static void show(Player p, Dialog d) {
-        p.getScheduler().run(dev.neonjava.neonah.NeonAH.get(), t -> p.showDialog(d), null);
+        Bukkit.getScheduler().runTask(dev.neonjava.neonah.NeonAH.get(), () -> p.showDialog(d));
     }
 }

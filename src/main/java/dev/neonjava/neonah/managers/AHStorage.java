@@ -36,11 +36,11 @@ public class AHStorage {
 
     private void createTables() {
         try (Connection c = getConnection(); Statement s = c.createStatement()) {
-            s.execute("CREATE TABLE IF NOT EXISTS ah_active_items (" +
+            s.execute("CREATE TABLE IF NOT EXISTS ah_active_v2 (" +
                     "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), price DOUBLE, item_data LONGTEXT, listed_at BIGINT)");
             s.execute("CREATE TABLE IF NOT EXISTS ah_unclaimed_items (" +
                     "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), item_data LONGTEXT)");
-            s.execute("CREATE TABLE IF NOT EXISTS ah_history (" +
+            s.execute("CREATE TABLE IF NOT EXISTS ah_history_v2 (" +
                     "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), buyer VARCHAR(36), price DOUBLE, item_data LONGTEXT, sold_at BIGINT)");
         } catch (SQLException e) {
             e.printStackTrace();
@@ -50,7 +50,7 @@ public class AHStorage {
     public List<AHItem> loadActive() {
         List<AHItem> items = new ArrayList<>();
         try (Connection c = getConnection();
-                PreparedStatement ps = c.prepareStatement("SELECT * FROM ah_active_items")) {
+                PreparedStatement ps = c.prepareStatement("SELECT * FROM ah_active_v2")) {
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 ItemStack is = deserialize(rs.getString("item_data"));
@@ -89,7 +89,7 @@ public class AHStorage {
 
     public void saveItem(AHItem item) {
         try (Connection c = getConnection();
-                PreparedStatement ps = c.prepareStatement("REPLACE INTO ah_active_items VALUES (?,?,?,?,?)")) {
+                PreparedStatement ps = c.prepareStatement("REPLACE INTO ah_active_v2 VALUES (?,?,?,?,?)")) {
             ps.setString(1, item.getId().toString());
             ps.setString(2, item.getSeller().toString());
             ps.setDouble(3, item.getPrice());
@@ -103,7 +103,7 @@ public class AHStorage {
 
     public boolean exists(UUID id) {
         try (Connection c = getConnection();
-                PreparedStatement ps = c.prepareStatement("SELECT 1 FROM ah_active_items WHERE id = ?")) {
+                PreparedStatement ps = c.prepareStatement("SELECT 1 FROM ah_active_v2 WHERE id = ?")) {
             ps.setString(1, id.toString());
             return ps.executeQuery().next();
         } catch (SQLException e) {
@@ -113,7 +113,7 @@ public class AHStorage {
 
     public void deleteItem(UUID id) {
         try (Connection c = getConnection();
-                PreparedStatement ps = c.prepareStatement("DELETE FROM ah_active_items WHERE id = ?")) {
+                PreparedStatement ps = c.prepareStatement("DELETE FROM ah_active_v2 WHERE id = ?")) {
             ps.setString(1, id.toString());
             ps.execute();
         } catch (SQLException e) {
@@ -145,7 +145,7 @@ public class AHStorage {
     }
 
     public void recordHistory(UUID seller, UUID buyer, double price, ItemStack item) {
-        String sql = "INSERT INTO ah_history (id, seller, buyer, price, item_data, sold_at) VALUES (?,?,?,?,?,?)";
+        String sql = "INSERT INTO ah_history_v2 (id, seller, buyer, price, item_data, sold_at) VALUES (?,?,?,?,?,?)";
         try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, seller.toString());
@@ -163,7 +163,7 @@ public class AHStorage {
         List<AHHistoryItem> list = new ArrayList<>();
         try (Connection c = getConnection();
                 PreparedStatement ps = c.prepareStatement(
-                        "SELECT * FROM ah_history WHERE seller = ? OR buyer = ? ORDER BY sold_at DESC LIMIT 100")) {
+                        "SELECT * FROM ah_history_v2 WHERE seller = ? OR buyer = ? ORDER BY sold_at DESC LIMIT 100")) {
             ps.setString(1, player.toString());
             ps.setString(2, player.toString());
             ResultSet rs = ps.executeQuery();

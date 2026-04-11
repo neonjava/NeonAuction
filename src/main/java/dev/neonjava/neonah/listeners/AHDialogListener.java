@@ -58,7 +58,7 @@ public class AHDialogListener implements Listener {
 
         } else if (idString.endsWith("/cancel")) {
             AHManager.get().clearPending(p.getUniqueId());
-            p.getScheduler().run(dev.neonjava.neonah.NeonAH.get(), t -> p.closeInventory(), null);
+            Bukkit.getScheduler().runTask(dev.neonjava.neonah.NeonAH.get(), () -> p.closeInventory());
         }
     }
 }

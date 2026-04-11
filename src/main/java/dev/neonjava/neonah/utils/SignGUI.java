@@ -83,7 +83,7 @@ public class SignGUI implements PacketListener {
         sessionsList.remove(player);
 
         final Location loc = new Location(player.getWorld(), info.pos().getX(), info.pos().getY(), info.pos().getZ());
-        Bukkit.getRegionScheduler().run(plugin, loc, t -> {
+        Bukkit.getScheduler().runTask(plugin, () -> {
             player.sendBlockChange(loc, player.getWorld().getBlockData(loc));
             if (player.getWorld().getBlockState(loc) instanceof TileState tile)
                 player.sendBlockUpdate(loc, tile);

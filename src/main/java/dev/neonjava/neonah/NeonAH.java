@@ -63,9 +63,8 @@ public class NeonAH extends JavaPlugin {
         // AHDialogListener — handles specific Cancel keys (mixed pattern)
         getServer().getPluginManager().registerEvents(new AHDialogListener(), this);
 
-        // Periodically check for expired items
-        Bukkit.getAsyncScheduler().runAtFixedRate(this, t -> AHManager.get().checkExpiry(), 1, 5,
-                java.util.concurrent.TimeUnit.MINUTES);
+        // Periodically check for expired items (every 5 mins = 6000 ticks)
+        Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> AHManager.get().checkExpiry(), 1200L, 6000L);
 
         Bukkit.getLogger().info("NeonAH v" + getDescription().getVersion() + " (with PacketEvents) Loaded!");
     }
