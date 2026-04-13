@@ -9,6 +9,9 @@ import net.kyori.adventure.key.Key;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+
+import java.util.Map;
 
 /**
  * AHDialogUtils - Router for Confirmation Interfaces.
@@ -66,28 +69,34 @@ public class AHDialogUtils {
                         }
 
                         try {
-                                // Re-verify existence in DB
-                                if (!AHManager.get().getStorage().exists(item.getId())) {
+                                AHItem liveItem = AHManager.get().getStorage().loadActiveItem(item.getId());
+                                if (liveItem == null) {
                                         p.sendMessage(ConfigManager.get().getMessage("item-already-bought"));
                                         return;
                                 }
 
                                 double balance = NeonAH.getEcon().getBalance(p);
-                                if (balance < item.getPrice()) {
+                                if (balance < liveItem.getPrice()) {
                                         p.sendMessage(ConfigManager.get().getMessage("insufficient-funds"));
                                         return;
                                 }
 
                                 // Transactional actions
-                                NeonAH.getEcon().withdrawPlayer(p, item.getPrice());
-                                NeonAH.getEcon().depositPlayer(Bukkit.getOfflinePlayer(item.getSeller()),
-                                                item.getPrice());
-                                AHManager.get().recordSale(item.getSeller(), p.getUniqueId(), item.getPrice(),
-                                                item.getItem());
+                                NeonAH.getEcon().withdrawPlayer(p, liveItem.getPrice());
+                                NeonAH.getEcon().depositPlayer(Bukkit.getOfflinePlayer(liveItem.getSeller()),
+                                                liveItem.getPrice());
+                                AHManager.get().recordSale(liveItem.getSeller(), p.getUniqueId(), liveItem.getPrice(),
+                                                liveItem.getItem());
 
                                 // Final item removal and distribution
-                                AHManager.get().removeItem(item);
-                                p.getInventory().addItem(item.getItem());
+                                AHManager.get().removeItemById(liveItem.getId());
+                                Map<Integer, ItemStack> leftovers = p.getInventory().addItem(liveItem.getItem());
+                                if (!leftovers.isEmpty()) {
+                                        for (ItemStack leftover : leftovers.values()) {
+                                                AHManager.get().markUnclaimed(p.getUniqueId(), leftover);
+                                        }
+                                        p.sendMessage("§e§l[AH] §eInventory was full. Remaining items were moved to your returns.");
+                                }
 
                                 p.sendMessage(ConfigManager.get().getMessage("purchase-success"));
                                 p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
@@ -96,8 +105,8 @@ public class AHDialogUtils {
                                 String broadcastMsg = ConfigManager.get().getMessage("buy-broadcast")
                                                 .replace("%buyer%", p.getName())
                                                 .replace("%seller%",
-                                                                Bukkit.getOfflinePlayer(item.getSeller()).getName())
-                                                .replace("%price%", AHFormatter.formatPrice(item.getPrice()));
+                                                                Bukkit.getOfflinePlayer(liveItem.getSeller()).getName())
+                                                .replace("%price%", AHFormatter.formatPrice(liveItem.getPrice()));
 
                                 Bukkit.getServer().sendMessage(net.kyori.adventure.text.minimessage.MiniMessage
                                                 .miniMessage().deserialize(
@@ -105,14 +114,14 @@ public class AHDialogUtils {
                                                                 net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
                                                                                 .component(
                                                                                                 "item",
-                                                                                                (item.getItem().getItemMeta() != null
-                                                                                                                && item.getItem()
-                                                                                                                                .getItemMeta()
-                                                                                                                                .hasDisplayName()
-                                                                                                                                                ? item.getItem().getItemMeta()
+                                                                                                (liveItem.getItem().getItemMeta() != null
+                                                                                                                && liveItem.getItem()
+                                                                                                                                 .getItemMeta()
+                                                                                                                                 .hasDisplayName()
+                                                                                                                                                ? liveItem.getItem().getItemMeta()
                                                                                                                                                                 .displayName()
                                                                                                                                                 : net.kyori.adventure.text.Component
-                                                                                                                                                                .translatable(item
+                                                                                                                                                                .translatable(liveItem
                                                                                                                                                                                 .getItem()
                                                                                                                                                                                 .getType()
                                                                                                                                                                                 .translationKey())))));

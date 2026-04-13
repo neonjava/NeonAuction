@@ -111,6 +111,31 @@ public class AHStorage {
         }
     }
 
+    public AHItem loadActiveItem(UUID id) {
+        String sql = "SELECT * FROM ah_active_v2 WHERE id = ? LIMIT 1";
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, id.toString());
+            ResultSet rs = ps.executeQuery();
+            if (!rs.next()) {
+                return null;
+            }
+            ItemStack is = deserialize(rs.getString("item_data"));
+            if (is == null) {
+                return null;
+            }
+            return new AHItem(
+                    UUID.fromString(rs.getString("id")),
+                    UUID.fromString(rs.getString("seller")),
+                    is,
+                    rs.getDouble("price"),
+                    rs.getLong("listed_at"));
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public void deleteItem(UUID id) {
         try (Connection c = getConnection();
                 PreparedStatement ps = c.prepareStatement("DELETE FROM ah_active_v2 WHERE id = ?")) {

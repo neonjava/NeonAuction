@@ -112,8 +112,18 @@ public class AHManager {
     }
 
     public void removeItem(AHItem item) {
-        activeItems.remove(item);
-        storage.deleteItem(item.getId());
+        if (item == null) {
+            return;
+        }
+        removeItemById(item.getId());
+    }
+
+    public void removeItemById(UUID itemId) {
+        if (itemId == null) {
+            return;
+        }
+        activeItems.removeIf(i -> i.getId().equals(itemId));
+        storage.deleteItem(itemId);
         notifySync();
     }
 
