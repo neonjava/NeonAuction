@@ -7,8 +7,10 @@ public class SafeDialog {
         if (supported == null) {
             try {
                 Class.forName("io.papermc.paper.dialog.Dialog");
+                Class.forName("org.bukkit.entity.Player").getMethod("showDialog",
+                        Class.forName("io.papermc.paper.dialog.Dialog"));
                 supported = true;
-            } catch (ClassNotFoundException e) {
+            } catch (ClassNotFoundException | NoSuchMethodException e) {
                 supported = false;
             }
         }

@@ -35,15 +35,99 @@ public class AHStorage {
     }
 
     private void createTables() {
-        try (Connection c = getConnection(); Statement s = c.createStatement()) {
-            s.execute("CREATE TABLE IF NOT EXISTS ah_active_v2 (" +
-                    "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), price DOUBLE, item_data LONGTEXT, listed_at BIGINT)");
-            s.execute("CREATE TABLE IF NOT EXISTS ah_unclaimed_items (" +
-                    "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), item_data LONGTEXT)");
-            s.execute("CREATE TABLE IF NOT EXISTS ah_history_v2 (" +
-                    "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), buyer VARCHAR(36), price DOUBLE, item_data LONGTEXT, sold_at BIGINT)");
+        try (Connection c = getConnection()) {
+            ensureHealthyTable(c, "ah_active_v2",
+                    "CREATE TABLE IF NOT EXISTS ah_active_v2 (" +
+                            "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), price DOUBLE, item_data LONGTEXT, listed_at BIGINT)");
+            ensureHealthyTable(c, "ah_unclaimed_items",
+                    "CREATE TABLE IF NOT EXISTS ah_unclaimed_items (" +
+                            "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), item_data LONGTEXT)");
+            ensureHealthyTable(c, "ah_history_v2",
+                    "CREATE TABLE IF NOT EXISTS ah_history_v2 (" +
+                            "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), buyer VARCHAR(36), price DOUBLE, item_data LONGTEXT, sold_at BIGINT)");
+
+            ensureColumn(c, "ah_active_v2", "id", "VARCHAR(36) NOT NULL");
+            ensureColumn(c, "ah_active_v2", "seller", "VARCHAR(36) NOT NULL");
+            ensureColumn(c, "ah_active_v2", "price", "DOUBLE NOT NULL");
+            ensureColumn(c, "ah_active_v2", "item_data", "LONGTEXT");
+            ensureColumn(c, "ah_active_v2", "created_at", "BIGINT NULL");
+            ensureColumn(c, "ah_active_v2", "listed_at", "BIGINT NOT NULL");
+
+            ensureColumn(c, "ah_unclaimed_items", "id", "VARCHAR(36) NOT NULL");
+            ensureColumn(c, "ah_unclaimed_items", "seller", "VARCHAR(36) NOT NULL");
+            ensureColumn(c, "ah_unclaimed_items", "item_data", "LONGTEXT");
+
+            ensureColumn(c, "ah_history_v2", "id", "VARCHAR(36) NOT NULL");
+            ensureColumn(c, "ah_history_v2", "seller", "VARCHAR(36) NOT NULL");
+            ensureColumn(c, "ah_history_v2", "buyer", "VARCHAR(36) NOT NULL");
+            ensureColumn(c, "ah_history_v2", "price", "DOUBLE NOT NULL");
+            ensureColumn(c, "ah_history_v2", "item_data", "LONGTEXT");
+            ensureColumn(c, "ah_history_v2", "uuid", "VARCHAR(36) NULL");
+            ensureColumn(c, "ah_history_v2", "type", "VARCHAR(16) NULL");
+            ensureColumn(c, "ah_history_v2", "created_at", "BIGINT NULL");
+            ensureColumn(c, "ah_history_v2", "sold_at", "BIGINT NOT NULL");
+
+            ensurePrimaryKey(c, "ah_active_v2", "id");
+            ensurePrimaryKey(c, "ah_unclaimed_items", "id");
+            ensurePrimaryKey(c, "ah_history_v2", "id");
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void ensureHealthyTable(Connection c, String table, String createSql) throws SQLException {
+        try (Statement s = c.createStatement()) {
+            s.execute(createSql);
+            try (ResultSet ignored = s.executeQuery("SELECT 1 FROM " + table + " LIMIT 1")) {
+                // table exists and is queryable
+            }
+        } catch (SQLException ex) {
+            String msg = ex.getMessage() == null ? "" : ex.getMessage().toLowerCase();
+            if (msg.contains("doesn't exist in engine")
+                    || msg.contains("does not exist in engine")
+                    || msg.contains("tablespace already exists")) {
+                try (Statement s = c.createStatement()) {
+                    s.execute("DROP TABLE IF EXISTS " + table);
+                    s.execute(createSql + " ENGINE=MyISAM");
+                }
+            } else {
+                throw ex;
+            }
+        }
+    }
+
+    private void ensureColumn(Connection c, String table, String column, String ddlType) throws SQLException {
+        if (columnExists(c, table, column)) {
+            try (Statement s = c.createStatement()) {
+                s.execute("ALTER TABLE " + table + " MODIFY COLUMN " + column + " " + ddlType);
+            }
+        } else {
+            try (Statement s = c.createStatement()) {
+                s.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + ddlType);
+            }
+        }
+    }
+
+    private boolean columnExists(Connection c, String table, String column) throws SQLException {
+        DatabaseMetaData meta = c.getMetaData();
+        try (ResultSet rs = meta.getColumns(c.getCatalog(), null, table, column)) {
+            return rs.next();
+        }
+    }
+
+    private void ensurePrimaryKey(Connection c, String table, String column) throws SQLException {
+        DatabaseMetaData meta = c.getMetaData();
+        boolean hasPk = false;
+        try (ResultSet rs = meta.getPrimaryKeys(c.getCatalog(), null, table)) {
+            while (rs.next()) {
+                hasPk = true;
+                break;
+            }
+        }
+        if (!hasPk) {
+            try (Statement s = c.createStatement()) {
+                s.execute("ALTER TABLE " + table + " ADD PRIMARY KEY (" + column + ")");
+            }
         }
     }
 
@@ -55,12 +139,16 @@ public class AHStorage {
             while (rs.next()) {
                 ItemStack is = deserialize(rs.getString("item_data"));
                 if (is != null) {
+                    long listedAt = rs.getLong("listed_at");
+                    if (listedAt <= 0 && columnExists(c, "ah_active_v2", "created_at")) {
+                        listedAt = rs.getLong("created_at");
+                    }
                     items.add(new AHItem(
                             UUID.fromString(rs.getString("id")),
                             UUID.fromString(rs.getString("seller")),
                             is,
                             rs.getDouble("price"),
-                            rs.getLong("listed_at")));
+                            listedAt > 0 ? listedAt : System.currentTimeMillis()));
                 }
             }
         } catch (SQLException e) {
@@ -89,12 +177,15 @@ public class AHStorage {
 
     public void saveItem(AHItem item) {
         try (Connection c = getConnection();
-                PreparedStatement ps = c.prepareStatement("REPLACE INTO ah_active_v2 VALUES (?,?,?,?,?)")) {
+                PreparedStatement ps = c.prepareStatement(
+                        "REPLACE INTO ah_active_v2 (id, seller, price, item_data, created_at, listed_at) VALUES (?,?,?,?,?,?)")) {
+            long now = item.getListedAt() > 0 ? item.getListedAt() : System.currentTimeMillis();
             ps.setString(1, item.getId().toString());
             ps.setString(2, item.getSeller().toString());
             ps.setDouble(3, item.getPrice());
             ps.setString(4, serialize(item.getItem()));
-            ps.setLong(5, item.getListedAt());
+            ps.setLong(5, now);
+            ps.setLong(6, now);
             ps.execute();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -170,14 +261,18 @@ public class AHStorage {
     }
 
     public void recordHistory(UUID seller, UUID buyer, double price, ItemStack item) {
-        String sql = "INSERT INTO ah_history_v2 (id, seller, buyer, price, item_data, sold_at) VALUES (?,?,?,?,?,?)";
+        String sql = "INSERT INTO ah_history_v2 (id, uuid, seller, buyer, price, item_data, type, created_at, sold_at) VALUES (?,?,?,?,?,?,?,?,?)";
         try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            long now = System.currentTimeMillis();
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, seller.toString());
-            ps.setString(3, buyer.toString());
-            ps.setDouble(4, price);
-            ps.setString(5, serialize(item));
-            ps.setLong(6, System.currentTimeMillis());
+            ps.setString(3, seller.toString());
+            ps.setString(4, buyer.toString());
+            ps.setDouble(5, price);
+            ps.setString(6, serialize(item));
+            ps.setString(7, "SALE");
+            ps.setLong(8, now);
+            ps.setLong(9, now);
             ps.execute();
         } catch (SQLException e) {
             e.printStackTrace();

@@ -101,6 +101,13 @@ public class AHDialogImpl {
     }
 
     private static void show(Player p, Dialog d) {
-        Bukkit.getScheduler().runTask(dev.neonjava.neonah.NeonAH.get(), () -> p.showDialog(d));
+        Bukkit.getScheduler().runTask(dev.neonjava.neonah.NeonAH.get(), () -> {
+            try {
+                Player.class.getMethod("showDialog", Dialog.class).invoke(p, d);
+            } catch (ReflectiveOperationException ignored) {
+                // Fallback handled by AHDialogUtils, which opens inventory confirmations when
+                // dialog API is unavailable.
+            }
+        });
     }
 }

@@ -60,7 +60,7 @@ public class ConfigManager {
         return messageCache.computeIfAbsent(path, k -> {
             String msg = messages.getString(k);
             if (msg == null)
-                return "§cMissing message: " + k;
+                return "<red>Missing message: " + k;
             return msg;
         });
     }
@@ -72,6 +72,8 @@ public class ConfigManager {
     public static net.kyori.adventure.text.Component parse(String msg) {
         if (msg == null)
             return net.kyori.adventure.text.Component.empty();
+        // Accept both '&' and '§' legacy codes.
+        msg = msg.replace('§', '&');
         // Automatic legacy Support: Convert & codes to MiniMessage tags if present
         if (msg.contains("&")) {
             msg = msg.replace("&0", "<black>").replace("&1", "<dark_blue>").replace("&2", "<dark_green>")
@@ -83,7 +85,12 @@ public class ConfigManager {
                     .replace("&m", "<strikethrough>").replace("&n", "<underline>").replace("&o", "<italic>")
                     .replace("&r", "<reset>");
         }
-        return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(msg);
+        try {
+            return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(msg);
+        } catch (Exception ex) {
+            return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
+                    .deserialize(msg);
+        }
     }
 
     public FileConfiguration getConfig() {

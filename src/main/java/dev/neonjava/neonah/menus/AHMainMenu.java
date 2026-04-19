@@ -24,9 +24,9 @@ public class AHMainMenu extends AHBaseMenu {
     private static final double HIGH_PRICE_THRESHOLD = 1_000.0;
 
     public enum SortMode {
-        RECENT("<white>Most Recent", Material.CLOCK),
-        LOW("<green>Lowest Price", Material.HOPPER),
-        HIGH("<gold>Highest Price", Material.GOLD_NUGGET);
+        RECENT("Most Recent", Material.CLOCK),
+        LOW("Lowest Price", Material.HOPPER),
+        HIGH("Highest Price", Material.GOLD_NUGGET);
 
         public final String label;
         public final Material icon;
@@ -140,7 +140,7 @@ public class AHMainMenu extends AHBaseMenu {
 
         // Slot 52 – My Listings
         inventory.setItem(52, create(Material.CHEST,
-                ConfigManager.parse("<orange><bold>" + AHFormatter.toSmallCaps("My Listings")),
+                ConfigManager.parse("<gold><bold>" + AHFormatter.toSmallCaps("My Listings")),
                 ConfigManager.parse("<gray>View or reclaim your items.")));
 
         // Slot 53 – History

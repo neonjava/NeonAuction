@@ -68,12 +68,15 @@ public class AHHistoryMenu extends AHBaseMenu {
             inventory.setItem(i, create(Material.BLACK_STAINED_GLASS_PANE, " "));
 
         if (page > 0)
-            inventory.setItem(48, create(Material.ARROW, "§e" + AHFormatter.toSmallCaps("Previous Page")));
+            inventory.setItem(48, create(Material.ARROW,
+                    ConfigManager.parse("<yellow>" + AHFormatter.toSmallCaps("Previous Page"))));
 
-        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "§c§l" + AHFormatter.toSmallCaps("Back to AH")));
+        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE,
+                ConfigManager.parse("<red><bold>" + AHFormatter.toSmallCaps("Back to AH"))));
 
         if (end < history.size())
-            inventory.setItem(50, create(Material.ARROW, "§e" + AHFormatter.toSmallCaps("Next Page")));
+            inventory.setItem(50, create(Material.ARROW,
+                    ConfigManager.parse("<yellow>" + AHFormatter.toSmallCaps("Next Page"))));
     }
 
     public void next() {

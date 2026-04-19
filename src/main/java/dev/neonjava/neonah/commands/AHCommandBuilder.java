@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.neonjava.neonah.NeonAH;
 import dev.neonjava.neonah.managers.AHManager;
+import dev.neonjava.neonah.managers.ConfigManager;
 import dev.neonjava.neonah.models.AHItem;
 import dev.neonjava.neonah.menus.AHMainMenu;
 import dev.neonjava.neonah.utils.AHFormatter;
@@ -37,13 +38,13 @@ public class AHCommandBuilder {
                                     double price = dev.neonjava.neonah.utils.AHFormatter.parsePrice(priceInput);
 
                                     if (price < 1.0) {
-                                        p.sendMessage("§cInvalid price! Use a number or suffixes like 100k, 1m, 1b.");
+                                        p.sendMessage(ConfigManager.get().getMiniMessage("invalid-price"));
                                         return 0;
                                     }
 
                                     ItemStack item = p.getInventory().getItemInMainHand();
                                     if (item.getType() == Material.AIR) {
-                                        p.sendMessage("§cYou must hold an item to sell it!");
+                                        p.sendMessage(ConfigManager.get().getMiniMessage("hold-item"));
                                         return 0;
                                     }
 
@@ -78,8 +79,7 @@ public class AHCommandBuilder {
                                             }
 
                                             if (isAnvilRenamed) {
-                                                p.sendMessage(dev.neonjava.neonah.managers.ConfigManager.get()
-                                                        .getMessage("renamed-blocked"));
+                                                p.sendMessage(ConfigManager.get().getMiniMessage("renamed-blocked"));
                                                 return 0;
                                             }
                                         }
@@ -91,27 +91,10 @@ public class AHCommandBuilder {
                                     // Debug signal
                                     p.getServer().getLogger().info("[AH] Broadcasting listing from " + p.getName());
 
-                                    // Broadcast new auction (no bold, uses messages.yml)
-                                    String broadcastMsg = dev.neonjava.neonah.managers.ConfigManager.get()
-                                            .getMessage("global-broadcast")
-                                            .replace("%name%", p.getName())
-                                            .replace("%price%", AHFormatter.formatPrice(price));
-
-                                    p.getServer().sendMessage(
-                                            net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
-                                                    AHFormatter.stripBold(broadcastMsg),
-                                                    net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
-                                                            .component("item", (item.getItemMeta() != null
-                                                                    && item.getItemMeta().hasDisplayName()
-                                                                            ? item.getItemMeta().displayName()
-                                                                            : net.kyori.adventure.text.Component
-                                                                                    .translatable(item.getType()
-                                                                                            .translationKey())))));
-
                                     p.sendMessage(
-                                            dev.neonjava.neonah.managers.ConfigManager.get().getMessage("item-listed")
+                                            ConfigManager.parse(ConfigManager.get().getMessage("item-listed")
                                                     .replace("%price%", String.valueOf(price))
-                                                    .replace("%compact%", AHFormatter.formatPrice(price)));
+                                                    .replace("%compact%", AHFormatter.formatPrice(price))));
                                     return 1;
                                 })))
                 .build();

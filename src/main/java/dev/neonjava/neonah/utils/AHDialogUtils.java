@@ -54,7 +54,7 @@ public class AHDialogUtils {
 
         public static void processPurchase(Player p, AHItem item) {
                 if (p.getInventory().firstEmpty() == -1) {
-                        p.sendMessage(ConfigManager.get().getMessage("at-inventory-full"));
+                        p.sendMessage(ConfigManager.get().getMiniMessage("at-inventory-full"));
                         return;
                 }
 
@@ -64,20 +64,20 @@ public class AHDialogUtils {
 
                 sync.acquireLock(lockKey).thenAccept(acquired -> {
                         if (!acquired) {
-                                p.sendMessage(ConfigManager.get().getMessage("item-already-bought"));
+                                p.sendMessage(ConfigManager.get().getMiniMessage("item-already-bought"));
                                 return;
                         }
 
                         try {
                                 AHItem liveItem = AHManager.get().getStorage().loadActiveItem(item.getId());
                                 if (liveItem == null) {
-                                        p.sendMessage(ConfigManager.get().getMessage("item-already-bought"));
+                                        p.sendMessage(ConfigManager.get().getMiniMessage("item-already-bought"));
                                         return;
                                 }
 
                                 double balance = NeonAH.getEcon().getBalance(p);
                                 if (balance < liveItem.getPrice()) {
-                                        p.sendMessage(ConfigManager.get().getMessage("insufficient-funds"));
+                                        p.sendMessage(ConfigManager.get().getMiniMessage("insufficient-funds"));
                                         return;
                                 }
 
@@ -95,10 +95,11 @@ public class AHDialogUtils {
                                         for (ItemStack leftover : leftovers.values()) {
                                                 AHManager.get().markUnclaimed(p.getUniqueId(), leftover);
                                         }
-                                        p.sendMessage("§e§l[AH] §eInventory was full. Remaining items were moved to your returns.");
+                                        p.sendMessage(ConfigManager.parse(
+                                                        "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <yellow>Inventory was full. Remaining items were moved to your returns."));
                                 }
 
-                                p.sendMessage(ConfigManager.get().getMessage("purchase-success"));
+                                p.sendMessage(ConfigManager.get().getMiniMessage("purchase-success"));
                                 p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
 
                                 // Broadcast
@@ -133,7 +134,7 @@ public class AHDialogUtils {
 
         public static void processRemoval(Player p, AHItem item) {
                 if (p.getInventory().firstEmpty() == -1) {
-                        p.sendMessage("§cInventory full!");
+                        p.sendMessage(ConfigManager.get().getMiniMessage("at-inventory-full"));
                         return;
                 }
 
@@ -149,7 +150,8 @@ public class AHDialogUtils {
                                         return;
                                 AHManager.get().removeItem(item);
                                 p.getInventory().addItem(item.getItem());
-                                p.sendMessage("§a§l[AH] §aListing removed.");
+                                p.sendMessage(ConfigManager.parse(
+                                                "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Listing removed."));
                         } finally {
                                 sync.releaseLock(lockKey);
                         }

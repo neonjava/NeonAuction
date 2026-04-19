@@ -1,6 +1,7 @@
 package dev.neonjava.neonah.listeners;
 
 import dev.neonjava.neonah.managers.AHManager;
+import dev.neonjava.neonah.managers.ConfigManager;
 import dev.neonjava.neonah.menus.*;
 import dev.neonjava.neonah.utils.AHDialogUtils;
 import dev.neonjava.neonah.models.AHItem;
@@ -150,18 +151,20 @@ public class AHMenuListener implements Listener {
                 AHDialogUtils.showSelfRemoveDialog(player, active.get(index));
             }
         } else if (slot >= 27 && slot < 45) {
-            List<ItemStack> unclaimed = AHManager.get().getUnclaimed(player.getUniqueId());
-            if (!unclaimed.isEmpty()) {
-                if (player.getInventory().firstEmpty() == -1) {
-                    player.sendMessage("§c§l[AH] §cInventory full! Cannot reclaim.");
-                    return;
+                List<ItemStack> unclaimed = AHManager.get().getUnclaimed(player.getUniqueId());
+                if (!unclaimed.isEmpty()) {
+                    if (player.getInventory().firstEmpty() == -1) {
+                    player.sendMessage(ConfigManager.parse(
+                            "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Inventory full! Cannot reclaim."));
+                        return;
+                    }
+                    AHManager.get().claimAll(player.getUniqueId());
+                    unclaimed.forEach(is -> player.getInventory().addItem(is));
+                player.sendMessage(ConfigManager.parse(
+                        "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>All unlisted items reclaimed!"));
+                    menu.render();
                 }
-                AHManager.get().claimAll(player.getUniqueId());
-                unclaimed.forEach(is -> player.getInventory().addItem(is));
-                player.sendMessage("§a§l[AH] §aAll unlisted items reclaimed!");
-                menu.render();
             }
-        }
     }
 
     private void handleConfirm(Player player, AHConfirmMenu menu, int slot) {
@@ -174,7 +177,8 @@ public class AHMenuListener implements Listener {
             } else if (menu.getType().equals("admin")) {
                 AHManager.get().removeItem(menu.getItem());
                 AHManager.get().markUnclaimed(menu.getItem().getSeller(), menu.getItem().getItem());
-                player.sendMessage("§a§l[AH] §aListing force-removed.");
+                player.sendMessage(ConfigManager.parse(
+                        "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Listing force-removed."));
             }
         } else if (slot == 15) { // Cancel (Red)
             // Go back to main menu
