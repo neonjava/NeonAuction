@@ -77,9 +77,13 @@ public class AHMainMenu extends AHBaseMenu {
                 lore.add(mm.deserialize("<dark_gray><strikethrough>                    "));
 
                 boolean isHighValue = item.getPrice() >= HIGH_PRICE_THRESHOLD;
+                String sellerName = Bukkit.getOfflinePlayer(item.getSeller()).getName();
+                if (sellerName == null || sellerName.isBlank()) {
+                    sellerName = item.getSeller().toString();
+                }
 
                 lore.add(ConfigManager.parse(ConfigManager.get().getMessage("lore.seller")
-                        .replace("%name%", Bukkit.getOfflinePlayer(item.getSeller()).getName())));
+                        .replace("%name%", sellerName)));
                 lore.add(ConfigManager.parse(ConfigManager.get().getMessage("lore.price")
                         .replace("%price%", AHFormatter.formatPrice(item.getPrice()))));
 
