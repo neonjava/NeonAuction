@@ -150,21 +150,37 @@ public class AHMenuListener implements Listener {
                 player.closeInventory();
                 AHDialogUtils.showSelfRemoveDialog(player, active.get(index));
             }
-        } else if (slot >= 27 && slot < 45) {
-                List<ItemStack> unclaimed = AHManager.get().getUnclaimed(player.getUniqueId());
-                if (!unclaimed.isEmpty()) {
-                    if (player.getInventory().firstEmpty() == -1) {
-                    player.sendMessage(ConfigManager.parse(
-                            "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Inventory full! Cannot reclaim."));
-                        return;
-                    }
-                    AHManager.get().claimAll(player.getUniqueId());
-                    unclaimed.forEach(is -> player.getInventory().addItem(is));
-                player.sendMessage(ConfigManager.parse(
-                        "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>All unlisted items reclaimed!"));
-                    menu.render();
+        } else if (slot == 31) {
+            List<ItemStack> unclaimed = AHManager.get().getUnclaimed(player.getUniqueId());
+            if (!unclaimed.isEmpty()) {
+                if (player.getInventory().firstEmpty() == -1) {
+                    player.sendMessage(ConfigManager.get().getMiniMessage("inventory-full-cannot-reclaim"));
+                    return;
                 }
+                AHManager.get().claimAll(player.getUniqueId());
+                unclaimed.forEach(is -> player.getInventory().addItem(is));
+                player.sendMessage(ConfigManager.get().getMiniMessage("all-items-reclaimed"));
+                menu.render();
             }
+        } else if (slot >= 36 && slot < 45) {
+            List<dev.neonjava.neonah.managers.AHStorage.UnclaimedEntry> unclaimed = AHManager.get()
+                    .getUnclaimedEntries(player.getUniqueId());
+            int idx = slot - 36;
+            if (idx >= unclaimed.size()) {
+                return;
+            }
+            if (player.getInventory().firstEmpty() == -1) {
+                player.sendMessage(ConfigManager.get().getMiniMessage("at-inventory-full"));
+                return;
+            }
+            dev.neonjava.neonah.managers.AHStorage.UnclaimedEntry entry = unclaimed.get(idx);
+            ItemStack claimed = AHManager.get().claimUnclaimed(player.getUniqueId(), entry.id());
+            if (claimed != null) {
+                player.getInventory().addItem(claimed);
+                player.sendMessage(ConfigManager.get().getMiniMessage("collected-unclaimed"));
+                menu.render();
+            }
+        }
     }
 
     private void handleConfirm(Player player, AHConfirmMenu menu, int slot) {
@@ -177,8 +193,7 @@ public class AHMenuListener implements Listener {
             } else if (menu.getType().equals("admin")) {
                 AHManager.get().removeItem(menu.getItem());
                 AHManager.get().markUnclaimed(menu.getItem().getSeller(), menu.getItem().getItem());
-                player.sendMessage(ConfigManager.parse(
-                        "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Listing force-removed."));
+                player.sendMessage(ConfigManager.get().getMiniMessage("listing-force-removed"));
             }
         } else if (slot == 15) { // Cancel (Red)
             // Go back to main menu

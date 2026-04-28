@@ -85,6 +85,14 @@ public class AHManager {
         return storage.loadUnclaimed(uuid);
     }
 
+    public List<AHStorage.UnclaimedEntry> getUnclaimedEntries(UUID uuid) {
+        return storage.loadUnclaimedEntries(uuid);
+    }
+
+    public ItemStack claimUnclaimed(UUID uuid, UUID unclaimedId) {
+        return storage.claimUnclaimed(uuid, unclaimedId);
+    }
+
     public void addItem(AHItem item) {
         activeItems.add(item);
         storage.saveItem(item);
@@ -92,22 +100,32 @@ public class AHManager {
 
         // Send global broadcast via Redis RAW chat channel
         if (core != null) {
-            String sellerName = org.bukkit.Bukkit.getOfflinePlayer(item.getSeller()).getName();
-            if (sellerName == null)
-                sellerName = "Unknown";
-
+            String broadcastTemplate = ConfigManager.get().getMessage("global-broadcast");
+            
             String itemName = item.getItem().getType().name().replace("_", " ").toLowerCase();
             if (item.getItem().hasItemMeta() && item.getItem().getItemMeta().hasDisplayName()) {
-                itemName = item.getItem().getItemMeta().getDisplayName();
+                 // Use legacy conversion to keep colors but avoid tag confusion
+                 itemName = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
+                         .serialize(item.getItem().getItemMeta().displayName());
             }
 
             String price = dev.neonjava.neonah.utils.AHFormatter.formatPrice(item.getPrice());
+            
+            String broadcast = broadcastTemplate
+                    .replace("%prefix%", dev.neonjava.neonah.utils.LuckPermsUtils.getPrefix(item.getSeller()))
+                    .replace("%suffix%", dev.neonjava.neonah.utils.LuckPermsUtils.getSuffix(item.getSeller()))
+                    .replace("%username%", dev.neonjava.neonah.utils.LuckPermsUtils.getName(item.getSeller()))
+                    .replace("%name%", dev.neonjava.neonah.utils.LuckPermsUtils.getName(item.getSeller()))
+                    .replace("%item%", itemName)
+                    .replace("%price%", price);
 
-            String broadcast = "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <white>" + sellerName
-                    + " <gray>has listed <white>" + itemName + " <gray>for <gradient:#f6d365:#fda085>" + price
-                    + "</gradient>!";
+            broadcast(broadcast);
+        }
+    }
 
-            core.getRedisManager().publish(dev.neon.coreplugin.sync.SyncManager.CHANNEL_CHAT, "RAW:" + broadcast);
+    public void broadcast(String message) {
+        if (core != null) {
+            core.getRedisManager().publish(dev.neon.coreplugin.sync.SyncManager.CHANNEL_CHAT, "RAW:" + message);
         }
     }
 
@@ -161,18 +179,35 @@ public class AHManager {
      * storage.
      */
     public void checkExpiry() {
+        storage.purgeExpiredUnclaimed();
         long now = System.currentTimeMillis();
-        // Read expiry duration from config (default 24h)
         long expirySeconds = dev.neonjava.neonah.managers.ConfigManager.get()
                 .getConfig().getLong("settings.expiry-duration", 86400L);
         long limit = expirySeconds * 1000L;
 
-        for (AHItem item : activeItems) {
+        dev.neon.coreplugin.tools.AmethystToolManager toolManager = (core != null) ? core.getAmethystToolManager() : null;
+
+        activeItems.removeIf(item -> {
+            // 1. Listing duration expiry (listed_at based)
             if (now - item.getListedAt() > limit) {
-                removeItem(item);
+                storage.deleteItem(item.getId());
                 markUnclaimed(item.getSeller(), item.getItem());
+                return true;
             }
+
+            // 2. Amethyst tool expiry (PDC timestamp based)
+            if (toolManager != null && toolManager.getToolType(item.getItem()) != null && toolManager.isExpired(item.getItem())) {
+                storage.deleteItem(item.getId());
+                // Breaks/disappears when expired anywhere
+                return true;
+            }
+            return false;
+        });
+
+        if (toolManager != null) {
+            storage.purgeExpiredToolsFromReturns(toolManager);
         }
+        notifySync();
     }
 
     // --- Permission-based limits ---

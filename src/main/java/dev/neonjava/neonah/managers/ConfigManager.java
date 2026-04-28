@@ -1,12 +1,11 @@
 package dev.neonjava.neonah.managers;
 
 import dev.neonjava.neonah.NeonAH;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 
-import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,7 +14,6 @@ public class ConfigManager {
     private final NeonAH plugin;
 
     private FileConfiguration config;
-    private FileConfiguration messages;
     private final Map<String, String> messageCache = new HashMap<>();
 
     private ConfigManager(NeonAH plugin) {
@@ -31,66 +29,62 @@ public class ConfigManager {
 
     public void init() {
         plugin.saveDefaultConfig();
-        plugin.getConfig().addDefault("license-key", "NEON-AHHH-0000");
-        plugin.getConfig().options().copyDefaults(true);
-        plugin.saveConfig();
         reload();
     }
 
     public void reload() {
         plugin.reloadConfig();
         this.config = plugin.getConfig();
-
-        File messagesFile = new File(plugin.getDataFolder(), "messages.yml");
-        if (!messagesFile.exists()) {
-            plugin.saveResource("messages.yml", false);
-        }
-        this.messages = YamlConfiguration.loadConfiguration(messagesFile);
-
-        // Load default messages if missing
-        InputStream defMessagesStream = plugin.getResource("messages.yml");
-        if (defMessagesStream != null) {
-            this.messages.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(defMessagesStream)));
-        }
-
         messageCache.clear();
     }
 
     public String getMessage(String path) {
         return messageCache.computeIfAbsent(path, k -> {
-            String msg = messages.getString(k);
+            // Check in messages section first
+            String msg = config.getString("messages." + k);
+            if (msg == null) {
+                // Fallback to direct path or legacy
+                msg = config.getString(k);
+            }
             if (msg == null)
-                return "<red>Missing message: " + k;
+                return "<red>Missing message: " + path;
             return msg;
         });
     }
 
-    public net.kyori.adventure.text.Component getMiniMessage(String path) {
+    public Component getMiniMessage(String path) {
         return parse(getMessage(path));
     }
 
-    public static net.kyori.adventure.text.Component parse(String msg) {
+    public static Component parse(String msg) {
         if (msg == null)
-            return net.kyori.adventure.text.Component.empty();
-        // Accept both '&' and '§' legacy codes.
+            return Component.empty();
+
+        // Standardize legacy character
         msg = msg.replace('§', '&');
-        // Automatic legacy Support: Convert & codes to MiniMessage tags if present
-        if (msg.contains("&")) {
-            msg = msg.replace("&0", "<black>").replace("&1", "<dark_blue>").replace("&2", "<dark_green>")
-                    .replace("&3", "<dark_aqua>").replace("&4", "<dark_red>").replace("&5", "<dark_purple>")
-                    .replace("&6", "<gold>").replace("&7", "<gray>").replace("&8", "<dark_gray>")
-                    .replace("&9", "<blue>").replace("&a", "<green>").replace("&b", "<aqua>")
-                    .replace("&c", "<red>").replace("&d", "<light_purple>").replace("&e", "<yellow>")
-                    .replace("&f", "<white>").replace("&k", "<obfuscated>").replace("&l", "<bold>")
-                    .replace("&m", "<strikethrough>").replace("&n", "<underline>").replace("&o", "<italic>")
-                    .replace("&r", "<reset>");
-        }
+
+        // Check if it's a MiniMessage (contains tags like <gradient>, <bold>, etc.)
+        // We'll try to deserialize with MiniMessage first as it's the modern standard.
         try {
-            return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(msg);
+            // Convert legacy & codes to MiniMessage if they exist for compatibility
+            // This is a common pattern for "best of both worlds"
+            String mmString = convertLegacyToMiniMessage(msg);
+            return MiniMessage.miniMessage().deserialize(mmString);
         } catch (Exception ex) {
-            return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
-                    .deserialize(msg);
+            // Fallback to legacy if MiniMessage fails
+            return LegacyComponentSerializer.legacyAmpersand().deserialize(msg);
         }
+    }
+
+    private static String convertLegacyToMiniMessage(String msg) {
+        return msg.replace("&0", "<black>").replace("&1", "<dark_blue>").replace("&2", "<dark_green>")
+                .replace("&3", "<dark_aqua>").replace("&4", "<dark_red>").replace("&5", "<dark_purple>")
+                .replace("&6", "<gold>").replace("&7", "<gray>").replace("&8", "<dark_gray>")
+                .replace("&9", "<blue>").replace("&a", "<green>").replace("&b", "<aqua>")
+                .replace("&c", "<red>").replace("&d", "<light_purple>").replace("&e", "<yellow>")
+                .replace("&f", "<white>").replace("&k", "<obfuscated>").replace("&l", "<bold>")
+                .replace("&m", "<strikethrough>").replace("&n", "<underline>").replace("&o", "<italic>")
+                .replace("&r", "<reset>");
     }
 
     public FileConfiguration getConfig() {

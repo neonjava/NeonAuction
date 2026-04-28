@@ -11,6 +11,9 @@ dependencies:
     Vault:
       load: BEFORE
       required: true
+    LuckPerms:
+      load: BEFORE
+      required: true
     packetevents:
       load: BEFORE
       required: true

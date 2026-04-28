@@ -95,37 +95,30 @@ public class AHDialogUtils {
                                         for (ItemStack leftover : leftovers.values()) {
                                                 AHManager.get().markUnclaimed(p.getUniqueId(), leftover);
                                         }
-                                        p.sendMessage(ConfigManager.parse(
-                                                        "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <yellow>Inventory was full. Remaining items were moved to your returns."));
+                                        p.sendMessage(ConfigManager.get().getMiniMessage("inventory-full-returns"));
                                 }
 
                                 p.sendMessage(ConfigManager.get().getMiniMessage("purchase-success"));
                                 p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
 
-                                // Broadcast
-                                String broadcastMsg = ConfigManager.get().getMessage("buy-broadcast")
-                                                .replace("%buyer%", p.getName())
-                                                .replace("%seller%",
-                                                                Bukkit.getOfflinePlayer(liveItem.getSeller()).getName())
-                                                .replace("%price%", AHFormatter.formatPrice(liveItem.getPrice()));
+                                // Broadcast globally
+                                String itemName = liveItem.getItem().getType().name().replace("_", " ").toLowerCase();
+                                if (liveItem.getItem().hasItemMeta() && liveItem.getItem().getItemMeta().hasDisplayName()) {
+                                    itemName = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
+                                            .serialize(liveItem.getItem().getItemMeta().displayName());
+                                }
 
-                                Bukkit.getServer().sendMessage(net.kyori.adventure.text.minimessage.MiniMessage
-                                                .miniMessage().deserialize(
-                                                                AHFormatter.stripBold(broadcastMsg),
-                                                                net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
-                                                                                .component(
-                                                                                                "item",
-                                                                                                (liveItem.getItem().getItemMeta() != null
-                                                                                                                && liveItem.getItem()
-                                                                                                                                 .getItemMeta()
-                                                                                                                                 .hasDisplayName()
-                                                                                                                                                ? liveItem.getItem().getItemMeta()
-                                                                                                                                                                .displayName()
-                                                                                                                                                : net.kyori.adventure.text.Component
-                                                                                                                                                                .translatable(liveItem
-                                                                                                                                                                                .getItem()
-                                                                                                                                                                                .getType()
-                                                                                                                                                                                .translationKey())))));
+                                String broadcastMsg = ConfigManager.get().getMessage("buy-broadcast")
+                                                .replace("%prefix%", dev.neonjava.neonah.utils.LuckPermsUtils.getPrefix(p.getUniqueId()))
+                                                .replace("%suffix%", dev.neonjava.neonah.utils.LuckPermsUtils.getSuffix(p.getUniqueId()))
+                                                .replace("%username%", p.getName())
+                                                .replace("%buyer%", p.getName())
+                                                .replace("%item%", itemName)
+                                                .replace("%seller_prefix%", dev.neonjava.neonah.utils.LuckPermsUtils.getPrefix(liveItem.getSeller()))
+                                                .replace("%seller_suffix%", dev.neonjava.neonah.utils.LuckPermsUtils.getSuffix(liveItem.getSeller()))
+                                                .replace("%seller%", (Bukkit.getOfflinePlayer(liveItem.getSeller()).getName() != null ? Bukkit.getOfflinePlayer(liveItem.getSeller()).getName() : "Unknown"))
+                                                .replace("%price%", AHFormatter.formatPrice(liveItem.getPrice()));
+                                dev.neonjava.neonah.managers.AHManager.get().broadcast(AHFormatter.stripBold(broadcastMsg));
                         } finally {
                                 sync.releaseLock(lockKey);
                         }
@@ -150,8 +143,7 @@ public class AHDialogUtils {
                                         return;
                                 AHManager.get().removeItem(item);
                                 p.getInventory().addItem(item.getItem());
-                                p.sendMessage(ConfigManager.parse(
-                                                "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Listing removed."));
+                                p.sendMessage(ConfigManager.get().getMiniMessage("listing-removed"));
                         } finally {
                                 sync.releaseLock(lockKey);
                         }

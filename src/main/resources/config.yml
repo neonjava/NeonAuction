@@ -16,3 +16,63 @@ limits:
   "neonah.limit.5": 5
   "neonah.limit.3": 3
   "default": 3
+
+settings:
+  expiry-duration: 86400
+  unclaimed-retention-days: 10
+
+# Message Section - MiniMessage & Legacy supported
+# Use <gradient:color1:color2>, <bold>, <italic>, <font:key>
+messages:
+  prefix: "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> "
+  no-permission: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>You don't have permission!"
+  at-limit: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>You have reached your listing limit (<gradient:#f6d365:#fda085>%limit%</gradient>). Cancel a listing first."
+  item-listed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Item listed for <gradient:#f6d365:#fda085>%price%</gradient> <gray>(%compact%)"
+  hold-item: "<gradient:#ff0844:#ffb199><bold>[!]</bold></gradient> <red>You must hold an item to sell it!"
+  invalid-price: "<gradient:#ff0844:#ffb199><bold>[!]</bold></gradient> <red>Invalid price! Use numbers or suffixes like 100k, 1m, 1b."
+  renamed-blocked: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Renamed items cannot be sold! <gray>(Only special SMP items allowed)"
+  at-inventory-full: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Your inventory is full!"
+  insufficient-funds: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Insufficient funds to complete purchase!"
+  purchase-success: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Successfully purchased!"
+  item-already-bought: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>This item was just bought by another player!"
+  inventory-full-returns: "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <yellow>Inventory was full. Remaining items were moved to your returns."
+  listing-removed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Listing removed."
+  listing-force-removed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Listing force-removed."
+  inventory-full-cannot-reclaim: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Inventory full! Cannot reclaim."
+  all-items-reclaimed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>All unlisted items reclaimed!"
+  collected-unclaimed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Collected one unclaimed item."
+
+  # %prefix%, %suffix%, %username% - LuckPerms and Player name
+  # %item% - Display name or Material name
+  # %price% - Reformatted price
+  global-broadcast: "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <white>%prefix%%username%%suffix% <gray>has listed an <white>%item% <gray>for <gradient:#f6d365:#fda085>%price%</gradient>!"
+  buy-broadcast: "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <white>%prefix%%username%%suffix% <gray>has bought an <white>%item% <gray>from <white>%seller_prefix%%seller%%seller_suffix% <gray>for <gradient:#f6d365:#fda085>%price%</gradient>!"
+
+  # GUI and Buttons
+  gui:
+    admin-force-remove: "<red><bold>⚠ Admin: Click to Force Remove"
+    sort-button:
+      title: "<yellow><bold>Sort: %mode%"
+      lore: "<gray>Click to cycle: Recent → Low → High"
+    refresh-button:
+      title: "<aqua><bold>Refresh"
+      lore: "<gray>Click to reload listings."
+    previous-page: "<yellow>Previous Page"
+    next-page: "<yellow>Next Page"
+    close-menu: "<red><bold>Close Menu"
+    my-listings:
+      title: "<gold><bold>My Listings"
+      lore: "<gray>View or reclaim your items."
+    auction-history:
+      title: "<light_purple><bold>Auction History"
+      lore: "<gray>View your recent sales & buys."
+
+  # Small caps lore (formatted in code via AHFormatter.toSmallCaps)
+  lore:
+    price: "<gray>Price: <gradient:#f6d365:#fda085>%price%</gradient>"
+    seller: "<gray>Seller: <white>%name%"
+    expires: "<gray>Expires in: <gradient:#ff0844:#ffb199>%time%</gradient>"
+    reclaim: "<gradient:#f6d365:#fda085>▶ Click to reclaim all items</gradient>"
+    cancel: "<gradient:#ff0844:#ffb199>▶ Click to cancel listing</gradient>"
+    buy: "<gradient:#84fab0:#8fd3f4>▶ Click to purchase</gradient>"
+    high-value: "<gradient:#f6d365:#fda085><bold>✦ HIGH VALUE LISTING</bold></gradient>"

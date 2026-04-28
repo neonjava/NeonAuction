@@ -84,10 +84,23 @@ public class AHMyListingsMenu extends AHBaseMenu {
                 ConfigManager.get().getMiniMessage("lore.reclaim"),
                 ConfigManager.parse("<gray>Click to reclaim all expired items.")));
 
-        // Returns (Slots 36-44)
-        List<ItemStack> returns = AHManager.get().getUnclaimed(uuid);
+        // Returns (Slots 36-44) — claim specific item by clicking it
+        List<dev.neonjava.neonah.managers.AHStorage.UnclaimedEntry> returns = AHManager.get().getUnclaimedEntries(uuid);
         for (int j = 0; j < Math.min(9, returns.size()); j++) {
-            inventory.setItem(36 + j, returns.get(j));
+            ItemStack stack = returns.get(j).item().clone();
+            ItemMeta meta = stack.getItemMeta();
+            if (meta != null) {
+                List<net.kyori.adventure.text.Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore())
+                        : new ArrayList<>();
+                lore.add(mm.deserialize("<dark_gray><strikethrough>                    "));
+                lore.add(mm.deserialize("<gradient:#84fab0:#8fd3f4>▶ Click to collect this item</gradient>"));
+                lore.add(mm.deserialize("<gray>Unclaimed retention: <yellow>"
+                        + ConfigManager.get().getConfig().getLong("settings.unclaimed-retention-days", 10L) + "d"));
+                meta.lore(lore.stream()
+                        .map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
+                stack.setItemMeta(meta);
+            }
+            inventory.setItem(36 + j, stack);
         }
 
         // Navigation (Bottom Row)

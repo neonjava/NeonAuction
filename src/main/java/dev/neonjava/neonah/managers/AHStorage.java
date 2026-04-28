@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.UUID;
 
 public class AHStorage {
+    public record UnclaimedEntry(UUID id, ItemStack item, long createdAt) {
+    }
+
     private dev.neon.coreplugin.CorePlugin core;
 
     public void init() {
@@ -41,7 +44,7 @@ public class AHStorage {
                             "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), price DOUBLE, item_data LONGTEXT, listed_at BIGINT)");
             ensureHealthyTable(c, "ah_unclaimed_items",
                     "CREATE TABLE IF NOT EXISTS ah_unclaimed_items (" +
-                            "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), item_data LONGTEXT)");
+                            "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), item_data LONGTEXT, created_at BIGINT)");
             ensureHealthyTable(c, "ah_history_v2",
                     "CREATE TABLE IF NOT EXISTS ah_history_v2 (" +
                             "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), buyer VARCHAR(36), price DOUBLE, item_data LONGTEXT, sold_at BIGINT)");
@@ -56,6 +59,7 @@ public class AHStorage {
             ensureColumn(c, "ah_unclaimed_items", "id", "VARCHAR(36) NOT NULL");
             ensureColumn(c, "ah_unclaimed_items", "seller", "VARCHAR(36) NOT NULL");
             ensureColumn(c, "ah_unclaimed_items", "item_data", "LONGTEXT");
+            ensureColumn(c, "ah_unclaimed_items", "created_at", "BIGINT NOT NULL");
 
             ensureColumn(c, "ah_history_v2", "id", "VARCHAR(36) NOT NULL");
             ensureColumn(c, "ah_history_v2", "seller", "VARCHAR(36) NOT NULL");
@@ -158,16 +162,40 @@ public class AHStorage {
     }
 
     public List<ItemStack> loadUnclaimed(UUID seller) {
+        purgeExpiredUnclaimed();
         List<ItemStack> items = new ArrayList<>();
         try (Connection c = getConnection();
                 PreparedStatement ps = c
-                        .prepareStatement("SELECT item_data FROM ah_unclaimed_items WHERE seller = ?")) {
+                        .prepareStatement("SELECT item_data FROM ah_unclaimed_items WHERE seller = ? ORDER BY created_at DESC")) {
             ps.setString(1, seller.toString());
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 ItemStack is = deserialize(rs.getString("item_data"));
                 if (is != null)
                     items.add(is);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return items;
+    }
+
+    public List<UnclaimedEntry> loadUnclaimedEntries(UUID seller) {
+        purgeExpiredUnclaimed();
+        List<UnclaimedEntry> items = new ArrayList<>();
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement(
+                        "SELECT id, item_data, created_at FROM ah_unclaimed_items WHERE seller = ? ORDER BY created_at DESC")) {
+            ps.setString(1, seller.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                ItemStack is = deserialize(rs.getString("item_data"));
+                if (is != null) {
+                    items.add(new UnclaimedEntry(
+                            UUID.fromString(rs.getString("id")),
+                            is,
+                            rs.getLong("created_at")));
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -240,13 +268,37 @@ public class AHStorage {
     public void addUnclaimed(UUID seller, ItemStack item) {
         try (Connection c = getConnection();
                 PreparedStatement ps = c
-                        .prepareStatement("INSERT INTO ah_unclaimed_items (id, seller, item_data) VALUES (?,?,?)")) {
+                        .prepareStatement("INSERT INTO ah_unclaimed_items (id, seller, item_data, created_at) VALUES (?,?,?,?)")) {
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, seller.toString());
             ps.setString(3, serialize(item));
+            ps.setLong(4, System.currentTimeMillis());
             ps.execute();
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    public ItemStack claimUnclaimed(UUID seller, UUID unclaimedId) {
+        String select = "SELECT item_data FROM ah_unclaimed_items WHERE id = ? AND seller = ? LIMIT 1";
+        String delete = "DELETE FROM ah_unclaimed_items WHERE id = ? AND seller = ?";
+        try (Connection c = getConnection();
+                PreparedStatement sel = c.prepareStatement(select);
+                PreparedStatement del = c.prepareStatement(delete)) {
+            sel.setString(1, unclaimedId.toString());
+            sel.setString(2, seller.toString());
+            ResultSet rs = sel.executeQuery();
+            if (!rs.next()) {
+                return null;
+            }
+            ItemStack item = deserialize(rs.getString("item_data"));
+            del.setString(1, unclaimedId.toString());
+            del.setString(2, seller.toString());
+            del.execute();
+            return item;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -305,6 +357,49 @@ public class AHStorage {
     }
 
     public void shutdown() {
+    }
+
+    public void purgeExpiredUnclaimed() {
+        long retentionDays = ConfigManager.get().getConfig().getLong("settings.unclaimed-retention-days", 10L);
+        long cutoff = System.currentTimeMillis() - (retentionDays * 24L * 60L * 60L * 1000L);
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement("DELETE FROM ah_unclaimed_items WHERE created_at < ?")) {
+            ps.setLong(1, cutoff);
+            ps.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void purgeExpiredToolsFromReturns(dev.neon.coreplugin.tools.AmethystToolManager toolManager) {
+        String sql = "SELECT id, item_data FROM ah_unclaimed_items";
+        List<UUID> toDelete = new ArrayList<>();
+        try (Connection c = getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                ItemStack is = deserialize(rs.getString("item_data"));
+                if (is != null && toolManager.getToolType(is) != null && toolManager.isExpired(is)) {
+                    toDelete.add(UUID.fromString(rs.getString("id")));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        if (!toDelete.isEmpty()) {
+            String delSql = "DELETE FROM ah_unclaimed_items WHERE id = ?";
+            try (Connection c = getConnection();
+                    PreparedStatement ps = c.prepareStatement(delSql)) {
+                for (UUID id : toDelete) {
+                    ps.setString(1, id.toString());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private String serialize(ItemStack item) {

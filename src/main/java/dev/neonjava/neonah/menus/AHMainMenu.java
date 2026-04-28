@@ -95,7 +95,7 @@ public class AHMainMenu extends AHBaseMenu {
                 lore.add(net.kyori.adventure.text.Component.empty());
 
                 if (admin)
-                    lore.add(ConfigManager.parse("<red><bold>⚠ Admin: Click to Force Remove"));
+                    lore.add(ConfigManager.get().getMiniMessage("gui.admin-force-remove"));
                 else if (item.getSeller().equals(player.getUniqueId()))
                     lore.add(ConfigManager.get().getMiniMessage("lore.cancel"));
                 else
@@ -120,37 +120,43 @@ public class AHMainMenu extends AHBaseMenu {
 
         // Slot 45 – Sort button
         inventory.setItem(45, create(sortMode.icon,
-                ConfigManager.parse("<yellow><bold>" + AHFormatter.toSmallCaps("Sort: " + sortMode.label)),
-                ConfigManager.parse("<gray>Click to cycle: Recent → Low → High")));
+                ConfigManager.parse(AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.sort-button.title"))
+                        .replace("%mode%", sortMode.label)),
+                ConfigManager.get().getMiniMessage("gui.sort-button.lore")));
 
         // Slot 46 – Refresh
         inventory.setItem(46, create(Material.NETHER_STAR,
-                ConfigManager.parse("<aqua><bold>" + AHFormatter.toSmallCaps("Refresh")),
-                ConfigManager.parse("<gray>Click to reload listings.")));
+                ConfigManager.parse(AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.refresh-button.title"))),
+                ConfigManager.get().getMiniMessage("gui.refresh-button.lore")));
 
         // Slot 48 – Prev page
         if (page > 0)
             inventory.setItem(48,
-                    create(Material.ARROW, ConfigManager.parse("<yellow>" + AHFormatter.toSmallCaps("Previous Page"))));
+                    create(Material.ARROW,
+                            ConfigManager.parse(
+                                    AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.previous-page")))));
 
         // Slot 49 – Close
         inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE,
-                ConfigManager.parse("<red><bold>" + AHFormatter.toSmallCaps("Close Menu"))));
+                ConfigManager.parse(AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.close-menu")))));
 
         // Slot 50 – Next page
         if (end < items.size())
             inventory.setItem(50,
-                    create(Material.ARROW, ConfigManager.parse("<yellow>" + AHFormatter.toSmallCaps("Next Page"))));
+                    create(Material.ARROW,
+                            ConfigManager.parse(
+                                    AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.next-page")))));
 
         // Slot 52 – My Listings
         inventory.setItem(52, create(Material.CHEST,
-                ConfigManager.parse("<gold><bold>" + AHFormatter.toSmallCaps("My Listings")),
-                ConfigManager.parse("<gray>View or reclaim your items.")));
+                ConfigManager.parse(AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.my-listings.title"))),
+                ConfigManager.get().getMiniMessage("gui.my-listings.lore")));
 
         // Slot 53 – History
         inventory.setItem(53, create(Material.ENDER_CHEST,
-                ConfigManager.parse("<light_purple><bold>" + AHFormatter.toSmallCaps("Auction History")),
-                ConfigManager.parse("<gray>View your recent sales & buys.")));
+                ConfigManager.parse(
+                        AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.auction-history.title"))),
+                ConfigManager.get().getMiniMessage("gui.auction-history.lore")));
     }
 
     public void cycleSort() {
