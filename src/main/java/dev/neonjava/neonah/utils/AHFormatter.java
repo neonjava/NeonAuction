@@ -99,4 +99,16 @@ public class AHFormatter {
         long minutes = TimeUnit.MILLISECONDS.toMinutes(remaining) % 60;
         return hours + "h " + minutes + "m";
     }
+    public static String formatDuration(long ms) {
+        if (ms <= 0) return "Expired";
+        long days = TimeUnit.MILLISECONDS.toDays(ms);
+        long hours = TimeUnit.MILLISECONDS.toHours(ms) % 24;
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60;
+        
+        StringBuilder sb = new StringBuilder();
+        if (days > 0) sb.append(days).append("d ");
+        if (hours > 0) sb.append(hours).append("h ");
+        if (minutes > 0) sb.append(minutes).append("m");
+        return sb.toString().trim();
+    }
 }

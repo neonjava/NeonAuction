@@ -62,6 +62,17 @@ public class AHMenuListener implements Listener {
                 menu.refresh();
                 return;
             }
+            case 47 -> {
+                player.closeInventory();
+                dev.neonjava.neonah.utils.SignGUI.get().open(player, (p, lines) -> {
+                    String search = lines[0].trim();
+                    if (search.isEmpty()) return;
+                    // For now, we'll just filter in real-time or send a message
+                    // In a full implementation, we'd pass this to the menu
+                    player.sendMessage(ConfigManager.get().getMiniMessage("searching-for").replaceText(b -> b.matchLiteral("%search%").replacement(search)));
+                });
+                return;
+            }
             case 48 -> {
                 menu.prev();
                 return;
@@ -94,14 +105,21 @@ public class AHMenuListener implements Listener {
 
         AHItem item = items.get(index);
 
-        // Close inventory FIRST, then show dialog/menu (NeonOrder pattern)
-        player.closeInventory();
-
         if (menu.isAdmin()) {
-            AHDialogUtils.showAdminRemoveDialog(player, item);
+            if (player.hasPermission("neonah.admin.bypass")) {
+                AHDialogUtils.processAdminRemoval(player, item);
+                player.getScheduler().run(dev.neonjava.neonah.NeonAH.get(), t -> {
+                    new AHMainMenu(player, true, menu.getPage(), menu.getSortMode()).open(player);
+                }, null);
+            } else {
+                player.closeInventory();
+                AHDialogUtils.showAdminRemoveDialog(player, item, menu.getPage(), menu.getSortMode());
+            }
         } else if (item.getSeller().equals(player.getUniqueId())) {
-            AHDialogUtils.showSelfRemoveDialog(player, item);
+            player.closeInventory();
+            AHDialogUtils.showSelfRemoveDialog(player, item, menu.getPage(), menu.getSortMode());
         } else {
+            player.closeInventory();
             AHDialogUtils.showBuyDialog(player, item);
         }
     }
@@ -120,6 +138,14 @@ public class AHMenuListener implements Listener {
         }
 
         switch (slot) {
+            case 47 -> {
+                player.closeInventory();
+                dev.neonjava.neonah.utils.SignGUI.get().open(player, (p, lines) -> {
+                    String q = lines[0].trim();
+                    if (q.isEmpty()) return;
+                    new AHHistoryMenu(p, q).open(p);
+                });
+            }
             case 48 -> menu.prev();
             case 49 -> new AHMainMenu(player, false).open(player);
             case 50 -> menu.next();
@@ -147,25 +173,18 @@ public class AHMenuListener implements Listener {
                     .filter(i -> i.getSeller().equals(player.getUniqueId())).toList();
             int index = menu.getPage() * 27 + slot;
             if (index < active.size()) {
-                player.closeInventory();
-                AHDialogUtils.showSelfRemoveDialog(player, active.get(index));
-            }
-        } else if (slot == 31) {
-            List<ItemStack> unclaimed = AHManager.get().getUnclaimed(player.getUniqueId());
-            if (!unclaimed.isEmpty()) {
-                if (player.getInventory().firstEmpty() == -1) {
-                    player.sendMessage(ConfigManager.get().getMiniMessage("inventory-full-cannot-reclaim"));
-                    return;
+                if (player.hasPermission("neonah.admin.bypass")) {
+                    AHDialogUtils.processRemoval(player, active.get(index));
+                    menu.render();
+                } else {
+                    player.closeInventory();
+                    AHDialogUtils.showSelfRemoveDialog(player, active.get(index), menu.getPage(), dev.neonjava.neonah.menus.AHMainMenu.SortMode.RECENT);
                 }
-                AHManager.get().claimAll(player.getUniqueId());
-                unclaimed.forEach(is -> player.getInventory().addItem(is));
-                player.sendMessage(ConfigManager.get().getMiniMessage("all-items-reclaimed"));
-                menu.render();
             }
-        } else if (slot >= 36 && slot < 45) {
+        } else if (slot >= 27 && slot < 36) {
             List<dev.neonjava.neonah.managers.AHStorage.UnclaimedEntry> unclaimed = AHManager.get()
                     .getUnclaimedEntries(player.getUniqueId());
-            int idx = slot - 36;
+            int idx = slot - 27;
             if (idx >= unclaimed.size()) {
                 return;
             }
@@ -190,10 +209,17 @@ public class AHMenuListener implements Listener {
                 AHDialogUtils.processPurchase(player, menu.getItem());
             } else if (menu.getType().equals("remove")) {
                 AHDialogUtils.processRemoval(player, menu.getItem());
+                new AHMyListingsMenu(player).open(player);
             } else if (menu.getType().equals("admin")) {
-                AHManager.get().removeItem(menu.getItem());
-                AHManager.get().markUnclaimed(menu.getItem().getSeller(), menu.getItem().getItem());
-                player.sendMessage(ConfigManager.get().getMiniMessage("listing-force-removed"));
+                AHManager.PendingAction pa = AHManager.get().getPending(player.getUniqueId());
+                AHDialogUtils.processAdminRemoval(player, menu.getItem());
+                player.getScheduler().run(dev.neonjava.neonah.NeonAH.get(), t -> {
+                    if (pa != null) {
+                        new AHMainMenu(player, true, pa.page, pa.sortMode).open(player);
+                    } else {
+                        new AHMainMenu(player, true).open(player);
+                    }
+                }, null);
             }
         } else if (slot == 15) { // Cancel (Red)
             // Go back to main menu

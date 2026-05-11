@@ -43,4 +43,19 @@ public abstract class AHBaseMenu implements InventoryHolder {
                         .map(dev.neonjava.neonah.managers.ConfigManager::parse)
                         .toArray(net.kyori.adventure.text.Component[]::new));
     }
+    protected void fill(Material mat) {
+        ItemStack filler = create(mat, net.kyori.adventure.text.Component.empty());
+        for (int i = 0; i < inventory.getSize(); i++) {
+            if (inventory.getItem(i) == null || inventory.getItem(i).getType() == Material.AIR) {
+                inventory.setItem(i, filler);
+            }
+        }
+    }
+
+    protected void fillRange(int start, int end, Material mat) {
+        ItemStack filler = create(mat, net.kyori.adventure.text.Component.empty());
+        for (int i = start; i < end; i++) {
+            inventory.setItem(i, filler);
+        }
+    }
 }

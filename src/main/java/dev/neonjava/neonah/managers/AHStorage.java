@@ -11,6 +11,7 @@ import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,118 +21,43 @@ public class AHStorage {
     public record UnclaimedEntry(UUID id, ItemStack item, long createdAt) {
     }
 
-    private dev.neon.coreplugin.CorePlugin core;
+    private Connection connection;
 
     public void init() {
-        core = (dev.neon.coreplugin.CorePlugin) org.bukkit.Bukkit.getPluginManager().getPlugin("NeonCore");
-        if (core == null) {
-            org.bukkit.Bukkit.getLogger().severe("[NeonAH] CorePlugin not found! Cross-server sync disabled.");
-        } else {
+        try {
+            File dataFolder = NeonAH.get().getDataFolder();
+            if (!dataFolder.exists())
+                dataFolder.mkdirs();
+
+            Class.forName("org.sqlite.JDBC");
+            connection = DriverManager.getConnection("jdbc:sqlite:" + new File(dataFolder, "auction.db").getAbsolutePath());
             createTables();
-        }
-    }
-
-    private Connection getConnection() throws SQLException {
-        if (core != null)
-            return core.getDatabaseManager().getConnection();
-        throw new SQLException("Core connection not available");
-    }
-
-    private void createTables() {
-        try (Connection c = getConnection()) {
-            ensureHealthyTable(c, "ah_active_v2",
-                    "CREATE TABLE IF NOT EXISTS ah_active_v2 (" +
-                            "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), price DOUBLE, item_data LONGTEXT, listed_at BIGINT)");
-            ensureHealthyTable(c, "ah_unclaimed_items",
-                    "CREATE TABLE IF NOT EXISTS ah_unclaimed_items (" +
-                            "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), item_data LONGTEXT, created_at BIGINT)");
-            ensureHealthyTable(c, "ah_history_v2",
-                    "CREATE TABLE IF NOT EXISTS ah_history_v2 (" +
-                            "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), buyer VARCHAR(36), price DOUBLE, item_data LONGTEXT, sold_at BIGINT)");
-
-            ensureColumn(c, "ah_active_v2", "id", "VARCHAR(36) NOT NULL");
-            ensureColumn(c, "ah_active_v2", "seller", "VARCHAR(36) NOT NULL");
-            ensureColumn(c, "ah_active_v2", "price", "DOUBLE NOT NULL");
-            ensureColumn(c, "ah_active_v2", "item_data", "LONGTEXT");
-            ensureColumn(c, "ah_active_v2", "created_at", "BIGINT NULL");
-            ensureColumn(c, "ah_active_v2", "listed_at", "BIGINT NOT NULL");
-
-            ensureColumn(c, "ah_unclaimed_items", "id", "VARCHAR(36) NOT NULL");
-            ensureColumn(c, "ah_unclaimed_items", "seller", "VARCHAR(36) NOT NULL");
-            ensureColumn(c, "ah_unclaimed_items", "item_data", "LONGTEXT");
-            ensureColumn(c, "ah_unclaimed_items", "created_at", "BIGINT NOT NULL");
-
-            ensureColumn(c, "ah_history_v2", "id", "VARCHAR(36) NOT NULL");
-            ensureColumn(c, "ah_history_v2", "seller", "VARCHAR(36) NOT NULL");
-            ensureColumn(c, "ah_history_v2", "buyer", "VARCHAR(36) NOT NULL");
-            ensureColumn(c, "ah_history_v2", "price", "DOUBLE NOT NULL");
-            ensureColumn(c, "ah_history_v2", "item_data", "LONGTEXT");
-            ensureColumn(c, "ah_history_v2", "uuid", "VARCHAR(36) NULL");
-            ensureColumn(c, "ah_history_v2", "type", "VARCHAR(16) NULL");
-            ensureColumn(c, "ah_history_v2", "created_at", "BIGINT NULL");
-            ensureColumn(c, "ah_history_v2", "sold_at", "BIGINT NOT NULL");
-
-            ensurePrimaryKey(c, "ah_active_v2", "id");
-            ensurePrimaryKey(c, "ah_unclaimed_items", "id");
-            ensurePrimaryKey(c, "ah_history_v2", "id");
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void ensureHealthyTable(Connection c, String table, String createSql) throws SQLException {
-        try (Statement s = c.createStatement()) {
-            s.execute(createSql);
-            try (ResultSet ignored = s.executeQuery("SELECT 1 FROM " + table + " LIMIT 1")) {
-                // table exists and is queryable
-            }
-        } catch (SQLException ex) {
-            String msg = ex.getMessage() == null ? "" : ex.getMessage().toLowerCase();
-            if (msg.contains("doesn't exist in engine")
-                    || msg.contains("does not exist in engine")
-                    || msg.contains("tablespace already exists")) {
-                try (Statement s = c.createStatement()) {
-                    s.execute("DROP TABLE IF EXISTS " + table);
-                    s.execute(createSql + " ENGINE=MyISAM");
-                }
-            } else {
-                throw ex;
-            }
-        }
+    private Connection getConnection() throws SQLException {
+        if (connection != null && !connection.isClosed())
+            return connection;
+        
+        File dataFolder = NeonAH.get().getDataFolder();
+        connection = DriverManager.getConnection("jdbc:sqlite:" + new File(dataFolder, "auction.db").getAbsolutePath());
+        return connection;
     }
 
-    private void ensureColumn(Connection c, String table, String column, String ddlType) throws SQLException {
-        if (columnExists(c, table, column)) {
+    private void createTables() {
+        try (Connection c = getConnection()) {
             try (Statement s = c.createStatement()) {
-                s.execute("ALTER TABLE " + table + " MODIFY COLUMN " + column + " " + ddlType);
+                s.execute("CREATE TABLE IF NOT EXISTS ah_active_v2 (" +
+                        "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), price DOUBLE, item_data LONGTEXT, listed_at BIGINT, created_at BIGINT)");
+                s.execute("CREATE TABLE IF NOT EXISTS ah_unclaimed_items (" +
+                        "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), item_data LONGTEXT, created_at BIGINT)");
+                s.execute("CREATE TABLE IF NOT EXISTS ah_history_v2 (" +
+                        "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), buyer VARCHAR(36), price DOUBLE, item_data LONGTEXT, sold_at BIGINT, uuid VARCHAR(36), type VARCHAR(16), created_at BIGINT)");
             }
-        } else {
-            try (Statement s = c.createStatement()) {
-                s.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + ddlType);
-            }
-        }
-    }
-
-    private boolean columnExists(Connection c, String table, String column) throws SQLException {
-        DatabaseMetaData meta = c.getMetaData();
-        try (ResultSet rs = meta.getColumns(c.getCatalog(), null, table, column)) {
-            return rs.next();
-        }
-    }
-
-    private void ensurePrimaryKey(Connection c, String table, String column) throws SQLException {
-        DatabaseMetaData meta = c.getMetaData();
-        boolean hasPk = false;
-        try (ResultSet rs = meta.getPrimaryKeys(c.getCatalog(), null, table)) {
-            while (rs.next()) {
-                hasPk = true;
-                break;
-            }
-        }
-        if (!hasPk) {
-            try (Statement s = c.createStatement()) {
-                s.execute("ALTER TABLE " + table + " ADD PRIMARY KEY (" + column + ")");
-            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 
@@ -144,7 +70,7 @@ public class AHStorage {
                 ItemStack is = deserialize(rs.getString("item_data"));
                 if (is != null) {
                     long listedAt = rs.getLong("listed_at");
-                    if (listedAt <= 0 && columnExists(c, "ah_active_v2", "created_at")) {
+                    if (listedAt <= 0) {
                         listedAt = rs.getLong("created_at");
                     }
                     items.add(new AHItem(
@@ -206,7 +132,7 @@ public class AHStorage {
     public void saveItem(AHItem item) {
         try (Connection c = getConnection();
                 PreparedStatement ps = c.prepareStatement(
-                        "REPLACE INTO ah_active_v2 (id, seller, price, item_data, created_at, listed_at) VALUES (?,?,?,?,?,?)")) {
+                        "INSERT OR REPLACE INTO ah_active_v2 (id, seller, price, item_data, created_at, listed_at) VALUES (?,?,?,?,?,?)")) {
             long now = item.getListedAt() > 0 ? item.getListedAt() : System.currentTimeMillis();
             ps.setString(1, item.getId().toString());
             ps.setString(2, item.getSeller().toString());
@@ -313,17 +239,17 @@ public class AHStorage {
     }
 
     public void recordHistory(UUID seller, UUID buyer, double price, ItemStack item) {
-        String sql = "INSERT INTO ah_history_v2 (id, uuid, seller, buyer, price, item_data, type, created_at, sold_at) VALUES (?,?,?,?,?,?,?,?,?)";
+        String sql = "INSERT INTO ah_history_v2 (id, seller, buyer, price, item_data, sold_at, uuid, type, created_at) VALUES (?,?,?,?,?,?,?,?,?)";
         try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             long now = System.currentTimeMillis();
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, seller.toString());
-            ps.setString(3, seller.toString());
-            ps.setString(4, buyer.toString());
-            ps.setDouble(5, price);
-            ps.setString(6, serialize(item));
-            ps.setString(7, "SALE");
-            ps.setLong(8, now);
+            ps.setString(3, buyer.toString());
+            ps.setDouble(4, price);
+            ps.setString(5, serialize(item));
+            ps.setLong(6, now);
+            ps.setString(7, seller.toString());
+            ps.setString(8, "SALE");
             ps.setLong(9, now);
             ps.execute();
         } catch (SQLException e) {
@@ -357,6 +283,13 @@ public class AHStorage {
     }
 
     public void shutdown() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public void purgeExpiredUnclaimed() {
@@ -368,37 +301,6 @@ public class AHStorage {
             ps.execute();
         } catch (SQLException e) {
             e.printStackTrace();
-        }
-    }
-
-    public void purgeExpiredToolsFromReturns(dev.neon.coreplugin.tools.AmethystToolManager toolManager) {
-        String sql = "SELECT id, item_data FROM ah_unclaimed_items";
-        List<UUID> toDelete = new ArrayList<>();
-        try (Connection c = getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                ItemStack is = deserialize(rs.getString("item_data"));
-                if (is != null && toolManager.getToolType(is) != null && toolManager.isExpired(is)) {
-                    toDelete.add(UUID.fromString(rs.getString("id")));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        if (!toDelete.isEmpty()) {
-            String delSql = "DELETE FROM ah_unclaimed_items WHERE id = ?";
-            try (Connection c = getConnection();
-                    PreparedStatement ps = c.prepareStatement(delSql)) {
-                for (UUID id : toDelete) {
-                    ps.setString(1, id.toString());
-                    ps.addBatch();
-                }
-                ps.executeBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
     }
 

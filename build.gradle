@@ -24,9 +24,6 @@ repositories {
 }
 
 dependencies {
-    // Core Network Plugin
-    compileOnly("dev.neon:NeonCore:1.0.0")
-    
     // LuckPerms API
     compileOnly("net.luckperms:api:5.4")
     
@@ -45,6 +42,7 @@ tasks {
     shadowJar {
         archiveBaseName.set("NeonAH")
         archiveClassifier.set("")
+        destinationDirectory.set(file("PROJECT_ROOT/Data/11"))
     }
 }
 

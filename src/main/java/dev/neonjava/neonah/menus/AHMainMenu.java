@@ -6,6 +6,7 @@ import dev.neonjava.neonah.models.AHItem;
 import dev.neonjava.neonah.utils.AHFormatter;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -38,11 +39,15 @@ public class AHMainMenu extends AHBaseMenu {
     }
 
     public AHMainMenu(Player player, boolean admin) {
-        super(54, net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
-                admin ? "<gradient:#ff0844:#ffb199><bold>" + AHFormatter.toSmallCaps("Admin Auction House")
-                        : "<gradient:#f6d365:#fda085><bold>" + AHFormatter.toSmallCaps("Auction House")));
+        this(player, admin, 0, SortMode.RECENT);
+    }
+
+    public AHMainMenu(Player player, boolean admin, int page, SortMode sortMode) {
+        super(54, ConfigManager.get().getMiniMessage("gui.main-menu.title"));
         this.player = player;
         this.admin = admin;
+        this.page = page;
+        this.sortMode = sortMode;
         AHManager.get().clearPending(player.getUniqueId());
     }
 
@@ -58,6 +63,8 @@ public class AHMainMenu extends AHBaseMenu {
                 .miniMessage();
         List<AHItem> items = new ArrayList<>(AHManager.get().getItems());
 
+        // Handle Search filtering if needed (will be implemented in MenuListener)
+        
         switch (sortMode) {
             case RECENT -> items.sort(Comparator.comparingLong(AHItem::getListedAt).reversed());
             case LOW -> items.sort(Comparator.comparingDouble(AHItem::getPrice));
@@ -82,24 +89,40 @@ public class AHMainMenu extends AHBaseMenu {
                     sellerName = item.getSeller().toString();
                 }
 
-                lore.add(ConfigManager.parse(ConfigManager.get().getMessage("lore.seller")
-                        .replace("%name%", sellerName)));
-                lore.add(ConfigManager.parse(ConfigManager.get().getMessage("lore.price")
-                        .replace("%price%", AHFormatter.formatPrice(item.getPrice()))));
+                lore.add(mm.deserialize("<gray>ѕᴇʟʟᴇʀ: <white>" + sellerName));
+                lore.add(mm.deserialize("<gray>ᴘʀɪᴄᴇ: <yellow>" + AHFormatter.formatPrice(item.getPrice())));
 
                 if (isHighValue)
-                    lore.add(ConfigManager.get().getMiniMessage("lore.high-value"));
+                    lore.add(mm.deserialize("<gradient:#f6d365:#fda085><bold>⚡ ʜɪɢʜ ᴠᴀʟᴜᴇ</bold></gradient>"));
 
-                lore.add(ConfigManager.parse(ConfigManager.get().getMessage("lore.expires")
-                        .replace("%time%", AHFormatter.formatTimeLeft(item.getListedAt()))));
+                lore.add(mm.deserialize("<gray>ᴇxᴘɪʀᴇѕ: <red>" + AHFormatter.formatTimeLeft(item.getListedAt())));
+                
+                // Amethyst/NeonTools Expiry Support
+                org.bukkit.persistence.PersistentDataContainer pdc = meta.getPersistentDataContainer();
+                NamespacedKey toolKey = new NamespacedKey("neontools", "amethyst_expiry");
+                if (pdc.has(toolKey, org.bukkit.persistence.PersistentDataType.LONG)) {
+                    long toolExpiry = pdc.getOrDefault(toolKey, org.bukkit.persistence.PersistentDataType.LONG, 0L);
+                    long remaining = toolExpiry - System.currentTimeMillis();
+                    if (remaining > 0) {
+                        lore.add(mm.deserialize("<light_purple>ᴛᴏᴏʟ ʟɪꜰᴇ: <white>" + AHFormatter.formatDuration(remaining)));
+                    } else {
+                        lore.add(mm.deserialize("<red><bold>⚠ ᴛᴏᴏʟ ᴇxᴘɪʀᴇᴅ</bold>"));
+                    }
+                }
+
                 lore.add(net.kyori.adventure.text.Component.empty());
 
                 if (admin)
-                    lore.add(ConfigManager.get().getMiniMessage("gui.admin-force-remove"));
+                    lore.add(ConfigManager.get().getMiniMessage("lore.force-remove"));
                 else if (item.getSeller().equals(player.getUniqueId()))
                     lore.add(ConfigManager.get().getMiniMessage("lore.cancel"));
-                else
-                    lore.add(ConfigManager.get().getMiniMessage("lore.buy"));
+                else {
+                    if (stack.getType().name().contains("SHULKER_BOX")) {
+                        lore.add(ConfigManager.get().getMiniMessage("lore.preview"));
+                    } else {
+                        lore.add(ConfigManager.get().getMiniMessage("lore.purchase"));
+                    }
+                }
 
                 meta.lore(lore.stream()
                         .map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
@@ -113,50 +136,42 @@ public class AHMainMenu extends AHBaseMenu {
             inventory.setItem(i - start, stack);
         }
 
-        // Bottom border
-        ItemStack glass = create(Material.BLACK_STAINED_GLASS_PANE, mm.deserialize(" "));
-        for (int i = 45; i < 54; i++)
-            inventory.setItem(i, glass);
+        // Navigation & Action Bar (45-53)
+        fillRange(45, 54, Material.GRAY_STAINED_GLASS_PANE);
 
-        // Slot 45 – Sort button
+        // Sort button
         inventory.setItem(45, create(sortMode.icon,
-                ConfigManager.parse(AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.sort-button.title"))
-                        .replace("%mode%", sortMode.label)),
-                ConfigManager.get().getMiniMessage("gui.sort-button.lore")));
+                "<gradient:#cfd9df:#e2ebf0><bold>ѕᴏʀᴛ ᴍᴏᴅᴇ</bold></gradient>",
+                "<gray>Current: <white>" + sortMode.label,
+                "<gray>Click to cycle sorting"));
 
-        // Slot 46 – Refresh
-        inventory.setItem(46, create(Material.NETHER_STAR,
-                ConfigManager.parse(AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.refresh-button.title"))),
-                ConfigManager.get().getMiniMessage("gui.refresh-button.lore")));
+        // Refresh
+        inventory.setItem(46, create(Material.SUNFLOWER,
+                "<gradient:#fccb90:#d57eeb><bold>ʀᴇꜰʀᴇѕʜ</bold></gradient>",
+                "<gray>Update listings in real-time"));
 
-        // Slot 48 – Prev page
+        // Search
+        inventory.setItem(47, create(Material.COMPASS,
+                "<gradient:#a1c4fd:#c2e9fb><bold>ѕᴇᴀʀᴄʜ</bold></gradient>",
+                "<gray>Search by item or username"));
+
+        // Navigation
         if (page > 0)
-            inventory.setItem(48,
-                    create(Material.ARROW,
-                            ConfigManager.parse(
-                                    AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.previous-page")))));
+            inventory.setItem(48, create(Material.ARROW, "<gradient:#8fd3f4:#84fab0><bold>ᴘʀᴇᴠɪᴏᴜѕ ᴘᴀɢᴇ</bold></gradient>"));
+        
+        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE, "<red><bold>ᴄʟᴏѕᴇ</bold>"));
 
-        // Slot 49 – Close
-        inventory.setItem(49, create(Material.RED_STAINED_GLASS_PANE,
-                ConfigManager.parse(AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.close-menu")))));
-
-        // Slot 50 – Next page
         if (end < items.size())
-            inventory.setItem(50,
-                    create(Material.ARROW,
-                            ConfigManager.parse(
-                                    AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.next-page")))));
+            inventory.setItem(50, create(Material.ARROW, "<gradient:#8fd3f4:#84fab0><bold>ɴᴇxᴛ ᴘᴀɢᴇ</bold></gradient>"));
 
-        // Slot 52 – My Listings
+        // User Buttons
         inventory.setItem(52, create(Material.CHEST,
-                ConfigManager.parse(AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.my-listings.title"))),
-                ConfigManager.get().getMiniMessage("gui.my-listings.lore")));
+                "<gradient:#f6d365:#fda085><bold>ᴍʏ ʟɪѕᴛɪɴɢѕ</bold></gradient>",
+                "<gray>Manage your active auctions"));
 
-        // Slot 53 – History
-        inventory.setItem(53, create(Material.ENDER_CHEST,
-                ConfigManager.parse(
-                        AHFormatter.toSmallCaps(ConfigManager.get().getMessage("gui.auction-history.title"))),
-                ConfigManager.get().getMiniMessage("gui.auction-history.lore")));
+        inventory.setItem(53, create(Material.BOOK,
+                "<gradient:#cfd9df:#e2ebf0><bold>ᴀᴜᴄᴛɪᴏɴ ʜɪѕᴛᴏʀʏ</bold></gradient>",
+                "<gray>View your past sales and buys"));
     }
 
     public void cycleSort() {

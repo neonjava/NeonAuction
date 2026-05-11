@@ -41,6 +41,10 @@ public class AHCommandBuilder {
                                         p.sendMessage(ConfigManager.get().getMiniMessage("invalid-price"));
                                         return 0;
                                     }
+                                    if (price > 1000000000.0) {
+                                        p.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize("<red>Maximum listing price is 1,000,000,000!"));
+                                        return 0;
+                                    }
 
                                     ItemStack item = p.getInventory().getItemInMainHand();
                                     if (item.getType() == Material.AIR) {

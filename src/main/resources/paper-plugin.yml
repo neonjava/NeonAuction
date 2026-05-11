@@ -5,20 +5,20 @@ dependencies:
     Geyser-Spigot:
       load: BEFORE
       required: false
-    NeonCore:
-      load: BEFORE
-      required: true
     Vault:
       load: BEFORE
       required: true
+      join-classpath: true
     LuckPerms:
       load: BEFORE
       required: true
+      join-classpath: true
     packetevents:
       load: BEFORE
       required: true
+      join-classpath: true
 description: A powerful Auction plugin with Bedrock support.
 folia-supported: true
 main: dev.neonjava.neonah.NeonAH
 name: NeonAH
-version: ${version}
+version: 1.0.0

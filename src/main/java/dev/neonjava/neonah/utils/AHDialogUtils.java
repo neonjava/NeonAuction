@@ -12,44 +12,34 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * AHDialogUtils - Router for Confirmation Interfaces.
- * Handles both Modern Dialogs (Java 1.21.7+) and Chest GUIs (Bedrock/Legacy).
+ * Now strictly uses Chest GUIs for better compatibility and design.
  */
 public class AHDialogUtils {
-        public static final Key KEY_CONFIRM_BUY = Key.key("neonah:buy/confirm");
-        public static final Key KEY_CANCEL_BUY = Key.key("neonah:buy/cancel");
-        public static final Key KEY_CONFIRM_REMOVE = Key.key("neonah:remove/confirm");
-        public static final Key KEY_CANCEL_REMOVE = Key.key("neonah:remove/cancel");
-        public static final Key KEY_CONFIRM_ADMIN = Key.key("neonah:admin/confirm");
-        public static final Key KEY_CANCEL_ADMIN = Key.key("neonah:admin/cancel");
+        private static final Set<UUID> locks = ConcurrentHashMap.newKeySet();
 
         public static void showBuyDialog(Player p, AHItem item) {
                 AHManager.get().setPending(p.getUniqueId(), "buy", item);
-                if (SafeDialog.isSupported() && !BedrockUtils.isBedrock(p)) {
-                        AHDialogImpl.showBuy(p, item);
-                } else {
-                        new AHConfirmMenu("buy", item).open(p);
-                }
+                new AHConfirmMenu("buy", item).open(p);
         }
 
-        public static void showSelfRemoveDialog(Player p, AHItem item) {
-                AHManager.get().setPending(p.getUniqueId(), "remove", item);
-                if (SafeDialog.isSupported() && !BedrockUtils.isBedrock(p)) {
-                        AHDialogImpl.showSelfRemove(p, item);
-                } else {
-                        new AHConfirmMenu("remove", item).open(p);
-                }
+        public static void showSelfRemoveDialog(Player p, AHItem item, int page, dev.neonjava.neonah.menus.AHMainMenu.SortMode sortMode) {
+                AHManager.get().setPendingWithState(p.getUniqueId(), "remove", item, page, sortMode);
+                new AHConfirmMenu("remove", item).open(p);
         }
 
-        public static void showAdminRemoveDialog(Player p, AHItem item) {
-                AHManager.get().setPending(p.getUniqueId(), "admin", item);
-                if (SafeDialog.isSupported() && !BedrockUtils.isBedrock(p)) {
-                        AHDialogImpl.showAdminRemove(p, item);
-                } else {
-                        new AHConfirmMenu("admin", item).open(p);
+        public static void showAdminRemoveDialog(Player p, AHItem item, int page, dev.neonjava.neonah.menus.AHMainMenu.SortMode sortMode) {
+                if (p.hasPermission("neonah.admin.bypass")) {
+                    processAdminRemoval(p, item);
+                    return;
                 }
+                AHManager.get().setPendingWithState(p.getUniqueId(), "admin", item, page, sortMode);
+                new AHConfirmMenu("admin", item).open(p);
         }
 
         public static void processPurchase(Player p, AHItem item) {
@@ -58,71 +48,66 @@ public class AHDialogUtils {
                         return;
                 }
 
-                dev.neon.coreplugin.sync.SyncManager sync = dev.neon.coreplugin.CorePlugin
-                                .getPlugin(dev.neon.coreplugin.CorePlugin.class).getSyncManager();
-                String lockKey = "ah_lock:" + item.getId();
+                UUID itemId = item.getId();
+                if (!locks.add(itemId)) {
+                        p.sendMessage(ConfigManager.get().getMiniMessage("item-already-bought"));
+                        return;
+                }
 
-                sync.acquireLock(lockKey).thenAccept(acquired -> {
-                        if (!acquired) {
+                try {
+                        AHItem liveItem = AHManager.get().getStorage().loadActiveItem(itemId);
+                        if (liveItem == null) {
                                 p.sendMessage(ConfigManager.get().getMiniMessage("item-already-bought"));
                                 return;
                         }
 
-                        try {
-                                AHItem liveItem = AHManager.get().getStorage().loadActiveItem(item.getId());
-                                if (liveItem == null) {
-                                        p.sendMessage(ConfigManager.get().getMiniMessage("item-already-bought"));
-                                        return;
-                                }
-
-                                double balance = NeonAH.getEcon().getBalance(p);
-                                if (balance < liveItem.getPrice()) {
-                                        p.sendMessage(ConfigManager.get().getMiniMessage("insufficient-funds"));
-                                        return;
-                                }
-
-                                // Transactional actions
-                                NeonAH.getEcon().withdrawPlayer(p, liveItem.getPrice());
-                                NeonAH.getEcon().depositPlayer(Bukkit.getOfflinePlayer(liveItem.getSeller()),
-                                                liveItem.getPrice());
-                                AHManager.get().recordSale(liveItem.getSeller(), p.getUniqueId(), liveItem.getPrice(),
-                                                liveItem.getItem());
-
-                                // Final item removal and distribution
-                                AHManager.get().removeItemById(liveItem.getId());
-                                Map<Integer, ItemStack> leftovers = p.getInventory().addItem(liveItem.getItem());
-                                if (!leftovers.isEmpty()) {
-                                        for (ItemStack leftover : leftovers.values()) {
-                                                AHManager.get().markUnclaimed(p.getUniqueId(), leftover);
-                                        }
-                                        p.sendMessage(ConfigManager.get().getMiniMessage("inventory-full-returns"));
-                                }
-
-                                p.sendMessage(ConfigManager.get().getMiniMessage("purchase-success"));
-                                p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-
-                                // Broadcast globally
-                                String itemName = liveItem.getItem().getType().name().replace("_", " ").toLowerCase();
-                                if (liveItem.getItem().hasItemMeta() && liveItem.getItem().getItemMeta().hasDisplayName()) {
-                                    itemName = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
-                                            .serialize(liveItem.getItem().getItemMeta().displayName());
-                                }
-
-                                String broadcastMsg = ConfigManager.get().getMessage("buy-broadcast")
-                                                .replace("%prefix%", dev.neonjava.neonah.utils.LuckPermsUtils.getPrefix(p.getUniqueId()))
-                                                .replace("%suffix%", dev.neonjava.neonah.utils.LuckPermsUtils.getSuffix(p.getUniqueId()))
-                                                .replace("%username%", p.getName())
-                                                .replace("%buyer%", p.getName())
-                                                .replace("%item%", itemName)
-                                                .replace("%seller_prefix%", dev.neonjava.neonah.utils.LuckPermsUtils.getPrefix(liveItem.getSeller()))
-                                                .replace("%seller_suffix%", dev.neonjava.neonah.utils.LuckPermsUtils.getSuffix(liveItem.getSeller()))
-                                                .replace("%seller%", (Bukkit.getOfflinePlayer(liveItem.getSeller()).getName() != null ? Bukkit.getOfflinePlayer(liveItem.getSeller()).getName() : "Unknown"))
-                                                .replace("%price%", AHFormatter.formatPrice(liveItem.getPrice()));
-                                dev.neonjava.neonah.managers.AHManager.get().broadcast(AHFormatter.stripBold(broadcastMsg));
-                        } finally {
-                                sync.releaseLock(lockKey);
+                        double balance = NeonAH.getEcon().getBalance(p);
+                        if (balance < liveItem.getPrice()) {
+                                p.sendMessage(ConfigManager.get().getMiniMessage("insufficient-funds"));
+                                return;
                         }
-                });
+
+                        // Transactional actions
+                        NeonAH.getEcon().withdrawPlayer(p, liveItem.getPrice());
+                        NeonAH.getEcon().depositPlayer(Bukkit.getOfflinePlayer(liveItem.getSeller()),
+                                        liveItem.getPrice());
+                        AHManager.get().recordSale(liveItem.getSeller(), p.getUniqueId(), liveItem.getPrice(),
+                                        liveItem.getItem());
+
+                        // Final item removal and distribution
+                        AHManager.get().removeItemById(liveItem.getId());
+                        Map<Integer, ItemStack> leftovers = p.getInventory().addItem(liveItem.getItem());
+                        if (!leftovers.isEmpty()) {
+                                for (ItemStack leftover : leftovers.values()) {
+                                        AHManager.get().markUnclaimed(p.getUniqueId(), leftover);
+                                }
+                                p.sendMessage(ConfigManager.get().getMiniMessage("inventory-full-returns"));
+                        }
+
+                        p.sendMessage(ConfigManager.get().getMiniMessage("purchase-success"));
+                        p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+
+                        // Broadcast locally
+                        String itemName = liveItem.getItem().getType().name().replace("_", " ").toLowerCase();
+                        if (liveItem.getItem().hasItemMeta() && liveItem.getItem().getItemMeta().hasDisplayName()) {
+                            itemName = net.kyori.adventure.text.serializer.plain.PlainComponentSerializer.plain()
+                                    .serialize(liveItem.getItem().getItemMeta().displayName());
+                        }
+
+                        String broadcastMsg = ConfigManager.get().getMessage("buy-broadcast")
+                                        .replace("%prefix%", dev.neonjava.neonah.utils.LuckPermsUtils.getPrefix(p.getUniqueId()))
+                                        .replace("%suffix%", dev.neonjava.neonah.utils.LuckPermsUtils.getSuffix(p.getUniqueId()))
+                                        .replace("%username%", p.getName())
+                                        .replace("%buyer%", p.getName())
+                                        .replace("%item%", itemName)
+                                        .replace("%seller_prefix%", dev.neonjava.neonah.utils.LuckPermsUtils.getPrefix(liveItem.getSeller()))
+                                        .replace("%seller_suffix%", dev.neonjava.neonah.utils.LuckPermsUtils.getSuffix(liveItem.getSeller()))
+                                        .replace("%seller%", (Bukkit.getOfflinePlayer(liveItem.getSeller()).getName() != null ? Bukkit.getOfflinePlayer(liveItem.getSeller()).getName() : "Unknown"))
+                                        .replace("%price%", AHFormatter.formatPrice(liveItem.getPrice()));
+                        AHManager.get().broadcast(broadcastMsg);
+                } finally {
+                        locks.remove(itemId);
+                }
         }
 
         public static void processRemoval(Player p, AHItem item) {
@@ -131,22 +116,32 @@ public class AHDialogUtils {
                         return;
                 }
 
-                dev.neon.coreplugin.sync.SyncManager sync = dev.neon.coreplugin.CorePlugin
-                                .getPlugin(dev.neon.coreplugin.CorePlugin.class).getSyncManager();
-                String lockKey = "ah_lock:" + item.getId();
+                UUID itemId = item.getId();
+                if (!locks.add(itemId)) return;
 
-                sync.acquireLock(lockKey).thenAccept(acquired -> {
-                        if (!acquired)
+                try {
+                        if (!AHManager.get().getStorage().exists(itemId))
                                 return;
-                        try {
-                                if (!AHManager.get().getStorage().exists(item.getId()))
-                                        return;
-                                AHManager.get().removeItem(item);
-                                p.getInventory().addItem(item.getItem());
-                                p.sendMessage(ConfigManager.get().getMiniMessage("listing-removed"));
-                        } finally {
-                                sync.releaseLock(lockKey);
-                        }
-                });
+                        AHManager.get().removeItem(item);
+                        p.getInventory().addItem(item.getItem());
+                        p.sendMessage(ConfigManager.get().getMiniMessage("listing-removed"));
+                } finally {
+                        locks.remove(itemId);
+                }
+        }
+
+        public static void processAdminRemoval(Player p, AHItem item) {
+                UUID itemId = item.getId();
+                if (!locks.add(itemId)) return;
+
+                try {
+                        if (!AHManager.get().getStorage().exists(itemId))
+                                return;
+                        AHManager.get().removeItem(item);
+                        AHManager.get().markUnclaimedByAdmin(item.getSeller(), item.getItem());
+                        p.sendMessage(ConfigManager.get().getMiniMessage("listing-force-removed"));
+                } finally {
+                        locks.remove(itemId);
+                }
         }
 }

@@ -12,45 +12,18 @@ public class AHManager {
     private final AHStorage storage = new AHStorage();
     private final List<AHItem> activeItems = new CopyOnWriteArrayList<>();
     private final Map<UUID, PendingAction> pending = new ConcurrentHashMap<>();
-    private dev.neon.coreplugin.CorePlugin core;
-
-    private void setupRedis() {
-        core = (dev.neon.coreplugin.CorePlugin) org.bukkit.Bukkit.getPluginManager().getPlugin("NeonCore");
-        if (core != null) {
-            core.getSyncManager().registerHandler(dev.neon.coreplugin.sync.SyncManager.CHANNEL_AH,
-                    (channel, message) -> {
-                        // message format: action:id
-                        String[] parts = message.split(":");
-                        if (parts.length < 2)
-                            return;
-
-                        String action = parts[0];
-                        if (action.equals("refresh")) {
-                            refreshFromDB();
-                        }
-                    });
-        }
-    }
-
-    private void refreshFromDB() {
-        activeItems.clear();
-        activeItems.addAll(storage.loadActive());
-    }
-
-    private void notifySync() {
-        if (core != null) {
-            core.getRedisManager().publish(dev.neon.coreplugin.sync.SyncManager.CHANNEL_AH, "refresh:all");
-        }
-    }
-
     public static class PendingAction {
         public final String type;
         public final AHItem item;
-        public volatile long shownAt = Long.MAX_VALUE; // Sentinel: not yet shown
+        public final int page;
+        public final dev.neonjava.neonah.menus.AHMainMenu.SortMode sortMode;
+        public volatile long shownAt = Long.MAX_VALUE;
 
-        public PendingAction(String type, AHItem item) {
+        public PendingAction(String type, AHItem item, int page, dev.neonjava.neonah.menus.AHMainMenu.SortMode sortMode) {
             this.type = type;
             this.item = item;
+            this.page = page;
+            this.sortMode = sortMode;
         }
     }
 
@@ -65,7 +38,6 @@ public class AHManager {
 
     public void init() {
         storage.init();
-        setupRedis();
         activeItems.addAll(storage.loadActive());
     }
 
@@ -96,16 +68,12 @@ public class AHManager {
     public void addItem(AHItem item) {
         activeItems.add(item);
         storage.saveItem(item);
-        notifySync();
 
-        // Send global broadcast via Redis RAW chat channel
-        if (core != null) {
-            String broadcastTemplate = ConfigManager.get().getMessage("global-broadcast");
-            
+        String broadcastTemplate = ConfigManager.get().getMessage("global-broadcast");
+        if (broadcastTemplate != null && !broadcastTemplate.isEmpty()) {
             String itemName = item.getItem().getType().name().replace("_", " ").toLowerCase();
             if (item.getItem().hasItemMeta() && item.getItem().getItemMeta().hasDisplayName()) {
-                 // Use legacy conversion to keep colors but avoid tag confusion
-                 itemName = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacyAmpersand()
+                 itemName = net.kyori.adventure.text.serializer.plain.PlainComponentSerializer.plain()
                          .serialize(item.getItem().getItemMeta().displayName());
             }
 
@@ -124,9 +92,7 @@ public class AHManager {
     }
 
     public void broadcast(String message) {
-        if (core != null) {
-            core.getRedisManager().publish(dev.neon.coreplugin.sync.SyncManager.CHANNEL_CHAT, "RAW:" + message);
-        }
+        org.bukkit.Bukkit.broadcast(dev.neonjava.neonah.NeonAH.get().getMm().deserialize(message));
     }
 
     public void removeItem(AHItem item) {
@@ -142,11 +108,22 @@ public class AHManager {
         }
         activeItems.removeIf(i -> i.getId().equals(itemId));
         storage.deleteItem(itemId);
-        notifySync();
     }
 
     public void markUnclaimed(UUID uuid, ItemStack item) {
         storage.addUnclaimed(uuid, item);
+    }
+
+    public void markUnclaimedByAdmin(UUID uuid, ItemStack item) {
+        ItemStack cloned = item.clone();
+        org.bukkit.inventory.meta.ItemMeta meta = cloned.getItemMeta();
+        if (meta != null) {
+            List<net.kyori.adventure.text.Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
+            lore.add(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize("<red>ᴛʜɪѕ ɪᴛᴇᴍ ᴡᴀѕ ʀᴇᴍᴏᴠᴇᴅ ʙʏ ᴀɴ ᴀᴅᴍɪɴ"));
+            meta.lore(lore.stream().map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
+            cloned.setItemMeta(meta);
+        }
+        storage.addUnclaimed(uuid, cloned);
     }
 
     public void claimAll(UUID uuid) {
@@ -162,7 +139,11 @@ public class AHManager {
     }
 
     public void setPending(UUID player, String type, AHItem item) {
-        pending.put(player, new PendingAction(type, item));
+        pending.put(player, new PendingAction(type, item, 0, dev.neonjava.neonah.menus.AHMainMenu.SortMode.RECENT));
+    }
+
+    public void setPendingWithState(UUID player, String type, AHItem item, int page, dev.neonjava.neonah.menus.AHMainMenu.SortMode sortMode) {
+        pending.put(player, new PendingAction(type, item, page, sortMode));
     }
 
     public PendingAction getPending(UUID player) {
@@ -185,29 +166,15 @@ public class AHManager {
                 .getConfig().getLong("settings.expiry-duration", 86400L);
         long limit = expirySeconds * 1000L;
 
-        dev.neon.coreplugin.tools.AmethystToolManager toolManager = (core != null) ? core.getAmethystToolManager() : null;
-
         activeItems.removeIf(item -> {
-            // 1. Listing duration expiry (listed_at based)
+            // Listing duration expiry (listed_at based)
             if (now - item.getListedAt() > limit) {
                 storage.deleteItem(item.getId());
                 markUnclaimed(item.getSeller(), item.getItem());
                 return true;
             }
-
-            // 2. Amethyst tool expiry (PDC timestamp based)
-            if (toolManager != null && toolManager.getToolType(item.getItem()) != null && toolManager.isExpired(item.getItem())) {
-                storage.deleteItem(item.getId());
-                // Breaks/disappears when expired anywhere
-                return true;
-            }
             return false;
         });
-
-        if (toolManager != null) {
-            storage.purgeExpiredToolsFromReturns(toolManager);
-        }
-        notifySync();
     }
 
     // --- Permission-based limits ---

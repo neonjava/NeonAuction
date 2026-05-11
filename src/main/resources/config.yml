@@ -1,78 +1,104 @@
-# NeonAH Config
-compact-price: true
-allow-custom-named-items: true # Whether to allow items with custom display names to be sold
-allowed-custom-names:
-  - "SHARD BOOSTER"
-  - "AMETHYST"
-  - "SPAWNER"
-# Add common keywords that identify special SMP items
-
-# Listing limits per permission node
-limits:
-  "neonah.limit.100": 100
-  "neonah.limit.50": 50
-  "neonah.limit.25": 25
-  "neonah.limit.10": 10
-  "neonah.limit.5": 5
-  "neonah.limit.3": 3
-  "default": 3
+# NeonAH - Modern Auction House Configuration
+# Supports MiniMessage (Gradients, Hex Colors, Hover, etc.)
 
 settings:
+  # The duration an item stays in the auction house (in seconds)
+  # Default: 86400 (24 hours)
   expiry-duration: 86400
-  unclaimed-retention-days: 10
+  
+  # How long to keep history logs (in days)
+  history-keep-days: 7
+  
+  # License key (for premium features)
+  license-key: "NEON-AHHH-0000"
 
-# Message Section - MiniMessage & Legacy supported
-# Use <gradient:color1:color2>, <bold>, <italic>, <font:key>
+# Modern Color Palettes & UI Titles
+gui:
+  main-menu:
+    title: "<gradient:#8fd3f4:#84fab0><bold>ᴀᴜᴄᴛɪᴏɴ ʜᴏᴜѕᴇ</bold></gradient>"
+    size: 54
+  confirm-buy:
+    title: "<gradient:#ff9a9e:#fecfef><bold>ᴄᴏɴꜰɪʀᴍ ᴘᴜʀᴄʜᴀѕᴇ</bold></gradient>"
+    size: 27
+  shulker-preview:
+    title: "<gradient:#a18cd1:#fbc2eb><bold>ѕʜᴜʟᴋᴇʀ ᴘʀᴇᴠɪᴇᴡ</bold></gradient>"
+    size: 36
+  unclaimed-items:
+    title: "<gradient:#cfd9df:#e2ebf0><bold>ᴜɴᴄʟᴀɪᴍᴇᴅ ɪᴛᴇᴍѕ</bold></gradient>"
+    size: 54
+
+# Items that are blocked from being listed
+# Logic: If item name contains any of these strings, it's blocked.
+# UNLESS it matches a whitelisted name below.
+blocked-names:
+  - "renamed"
+  - "fake"
+
+# These names are ALWAYS allowed even if they contain blocked strings
+allowed-custom-names:
+  - "<gradient:#ff0844:#ffb199>Amethyst Sword</gradient>"
+  - "<gradient:#ff0844:#ffb199>Amethyst Pickaxe</gradient>"
+  - "Smart Spawner"
+
+# Permission-based limits (number of active listings)
+limits:
+  default: 3
+  vip: 5
+  mvp: 10
+  owner: 50
+
 messages:
-  prefix: "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> "
-  no-permission: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>You don't have permission!"
-  at-limit: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>You have reached your listing limit (<gradient:#f6d365:#fda085>%limit%</gradient>). Cancel a listing first."
-  item-listed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Item listed for <gradient:#f6d365:#fda085>%price%</gradient> <gray>(%compact%)"
-  hold-item: "<gradient:#ff0844:#ffb199><bold>[!]</bold></gradient> <red>You must hold an item to sell it!"
-  invalid-price: "<gradient:#ff0844:#ffb199><bold>[!]</bold></gradient> <red>Invalid price! Use numbers or suffixes like 100k, 1m, 1b."
-  renamed-blocked: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Renamed items cannot be sold! <gray>(Only special SMP items allowed)"
-  at-inventory-full: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Your inventory is full!"
-  insufficient-funds: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Insufficient funds to complete purchase!"
-  purchase-success: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Successfully purchased!"
-  item-already-bought: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>This item was just bought by another player!"
-  inventory-full-returns: "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <yellow>Inventory was full. Remaining items were moved to your returns."
-  listing-removed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Listing removed."
-  listing-force-removed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Listing force-removed."
-  inventory-full-cannot-reclaim: "<gradient:#ff0844:#ffb199><bold>[AH]</bold></gradient> <red>Inventory full! Cannot reclaim."
-  all-items-reclaimed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>All unlisted items reclaimed!"
-  collected-unclaimed: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <green>Collected one unclaimed item."
-
-  # %prefix%, %suffix%, %username% - LuckPerms and Player name
-  # %item% - Display name or Material name
-  # %price% - Reformatted price
-  global-broadcast: "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <white>%prefix%%username%%suffix% <gray>has listed an <white>%item% <gray>for <gradient:#f6d365:#fda085>%price%</gradient>!"
-  buy-broadcast: "<gradient:#f6d365:#fda085><bold>[AH]</bold></gradient> <white>%prefix%%username%%suffix% <gray>has bought an <white>%item% <gray>from <white>%seller_prefix%%seller%%seller_suffix% <gray>for <gradient:#f6d365:#fda085>%price%</gradient>!"
-
-  # GUI and Buttons
-  gui:
-    admin-force-remove: "<red><bold>⚠ Admin: Click to Force Remove"
-    sort-button:
-      title: "<yellow><bold>Sort: %mode%"
-      lore: "<gray>Click to cycle: Recent → Low → High"
-    refresh-button:
-      title: "<aqua><bold>Refresh"
-      lore: "<gray>Click to reload listings."
-    previous-page: "<yellow>Previous Page"
-    next-page: "<yellow>Next Page"
-    close-menu: "<red><bold>Close Menu"
-    my-listings:
-      title: "<gold><bold>My Listings"
-      lore: "<gray>View or reclaim your items."
-    auction-history:
-      title: "<light_purple><bold>Auction History"
-      lore: "<gray>View your recent sales & buys."
-
-  # Small caps lore (formatted in code via AHFormatter.toSmallCaps)
+  prefix: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> "
+  
+  # Formatting for auction listings
+  item-listed: "<green>Item successfully listed for <yellow>%compact%<green>!"
+  invalid-price: "<red>Invalid price! Use numbers or suffixes like 10k, 1m."
+  hold-item: "<red>You must be holding an item to sell it!"
+  renamed-blocked: "<red>Renamed items (or containers with them) cannot be auctioned!"
+  at-inventory-full: "<red>Your inventory is full! Please make space."
+  item-already-bought: "<red>This item has already been purchased or removed."
+  insufficient-funds: "<red>You do not have enough money to buy this item."
+  purchase-success: "<green>You successfully bought the item!"
+  listing-removed: "<yellow>Listing successfully removed and returned."
+  inventory-full-returns: "<yellow>Inventory full! Items moved to /ah unclaimed."
+  
+  # Global broadcasts
+  global-broadcast: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <gray>%name% listed <white>%item% <gray>for <yellow>%price%<gray>!"
+  buy-broadcast: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <gray>%buyer% <white>purchased <white>%item% <gray>from <white>%seller% <gray>for <yellow>%price%<gray>!"
+  
   lore:
-    price: "<gray>Price: <gradient:#f6d365:#fda085>%price%</gradient>"
-    seller: "<gray>Seller: <white>%name%"
-    expires: "<gray>Expires in: <gradient:#ff0844:#ffb199>%time%</gradient>"
-    reclaim: "<gradient:#f6d365:#fda085>▶ Click to reclaim all items</gradient>"
-    cancel: "<gradient:#ff0844:#ffb199>▶ Click to cancel listing</gradient>"
-    buy: "<gradient:#84fab0:#8fd3f4>▶ Click to purchase</gradient>"
-    high-value: "<gradient:#f6d365:#fda085><bold>✦ HIGH VALUE LISTING</bold></gradient>"
+    price: "<gray>ᴘʀɪᴄᴇ: <yellow>%price%"
+    cancel: "<red>» Click to Cancel Listing"
+    reclaim: "<green>» Click to Reclaim All"
+    force-remove: "<red>» Click to Force Remove"
+    preview: "<light_purple>» Click to Preview Contents"
+    purchase: "<green>» Click to Purchase"
+
+# Icon settings for buttons
+icons:
+  next-page:
+    material: ARROW
+    name: "<gradient:#8fd3f4:#84fab0>ɴᴇxᴛ ᴘᴀɢᴇ</gradient>"
+    lore:
+      - "<gray>Click to view more items"
+  prev-page:
+    material: ARROW
+    name: "<gradient:#8fd3f4:#84fab0>ᴘʀᴇᴠɪᴏᴜѕ ᴘᴀɢᴇ</gradient>"
+    lore:
+      - "<gray>Click to go back"
+  refresh:
+    material: SUNFLOWER
+    name: "<gradient:#fccb90:#d57eeb>ʀᴇꜰʀᴇѕʜ</gradient>"
+    lore:
+      - "<gray>Click to update listings"
+  search:
+    material: COMPASS
+    name: "<gradient:#a1c4fd:#c2e9fb>ѕᴇᴀʀᴄʜ</gradient>"
+    lore:
+      - "<gray>Click to search by name/user"
+  sort:
+    material: HOPPER
+    name: "<gradient:#cfd9df:#e2ebf0>ѕᴏʀᴛ ɪᴛᴇᴍѕ</gradient>"
+    lore:
+      - "<gray>Current: <white>%sort_mode%"
+      - "<gray>Click to cycle sort modes"

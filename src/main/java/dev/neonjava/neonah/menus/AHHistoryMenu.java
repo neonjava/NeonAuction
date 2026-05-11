@@ -17,11 +17,17 @@ import java.util.List;
 public class AHHistoryMenu extends AHBaseMenu {
     private final Player player;
     private int page = 0;
+    private String search = null;
 
     public AHHistoryMenu(Player player) {
+        this(player, null);
+    }
+
+    public AHHistoryMenu(Player player, String search) {
         super(54, ConfigManager.parse(
                 "<gradient:#9d50bb:#6e48aa><bold>" + AHFormatter.toSmallCaps("Auction History")));
         this.player = player;
+        this.search = search;
     }
 
     @Override
@@ -33,6 +39,15 @@ public class AHHistoryMenu extends AHBaseMenu {
     public void render() {
         inventory.clear();
         List<AHHistoryItem> history = AHManager.get().getHistory(player.getUniqueId());
+
+        if (search != null && !search.isEmpty()) {
+            String q = search.toLowerCase();
+            history = history.stream()
+                .filter(hi -> hi.getItem().getType().name().toLowerCase().contains(q) || 
+                              Bukkit.getOfflinePlayer(hi.getSeller()).getName() != null && Bukkit.getOfflinePlayer(hi.getSeller()).getName().toLowerCase().contains(q) ||
+                              Bukkit.getOfflinePlayer(hi.getBuyer()).getName() != null && Bukkit.getOfflinePlayer(hi.getBuyer()).getName().toLowerCase().contains(q))
+                .toList();
+        }
 
         int start = page * 45;
         int end = Math.min(start + 45, history.size());
@@ -65,7 +80,13 @@ public class AHHistoryMenu extends AHBaseMenu {
 
         // Bottom Bar
         for (int i = 45; i < 54; i++)
-            inventory.setItem(i, create(Material.BLACK_STAINED_GLASS_PANE, " "));
+            inventory.setItem(i, create(Material.GRAY_STAINED_GLASS_PANE, " "));
+
+        // Search
+        inventory.setItem(47, create(Material.COMPASS,
+                "<gradient:#a1c4fd:#c2e9fb><bold>ѕᴇᴀʀᴄʜ</bold></gradient>",
+                search == null ? "<gray>Click to search history" : "<gray>Searching: <white>" + search,
+                "<gray>Filter by item name or player"));
 
         if (page > 0)
             inventory.setItem(48, create(Material.ARROW,

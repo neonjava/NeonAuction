@@ -71,20 +71,10 @@ public class AHMyListingsMenu extends AHBaseMenu {
         }
 
         // ─────────────────────────────────────────────────────────────
-        // Returns & Navigation (Bottom 18 slots)
+        // Returns & Navigation (Bottom rows)
         // ─────────────────────────────────────────────────────────────
 
-        // Separator
-        ItemStack glass = create(Material.BLACK_STAINED_GLASS_PANE, ConfigManager.parse(" "));
-        for (int j = 27; j < 36; j++)
-            inventory.setItem(j, glass);
-
-        // Reclaim All button
-        inventory.setItem(31, create(Material.HOPPER,
-                ConfigManager.get().getMiniMessage("lore.reclaim"),
-                ConfigManager.parse("<gray>Click to reclaim all expired items.")));
-
-        // Returns (Slots 36-44) — claim specific item by clicking it
+        // Returns (Slots 27-35) — claim specific item by clicking it
         List<dev.neonjava.neonah.managers.AHStorage.UnclaimedEntry> returns = AHManager.get().getUnclaimedEntries(uuid);
         for (int j = 0; j < Math.min(9, returns.size()); j++) {
             ItemStack stack = returns.get(j).item().clone();
@@ -100,10 +90,11 @@ public class AHMyListingsMenu extends AHBaseMenu {
                         .map(c -> c.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)).toList());
                 stack.setItemMeta(meta);
             }
-            inventory.setItem(36 + j, stack);
+            inventory.setItem(27 + j, stack);
         }
 
         // Navigation (Bottom Row)
+        ItemStack glass = create(Material.BLACK_STAINED_GLASS_PANE, ConfigManager.parse(" "));
         for (int j = 45; j < 54; j++)
             inventory.setItem(j, glass);
 

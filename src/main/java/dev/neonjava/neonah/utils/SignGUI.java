@@ -22,72 +22,65 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.function.Consumer;
 
-/**
- * SignGUI - Native Bedrock Sign Input Handler using PacketEvents.
- * Replicated from NeonOrder to ensure Bedrock text inputs work correctly.
- */
 @SuppressWarnings("UnstableApiUsage")
 public class SignGUI implements PacketListener {
     private static final HashMap<Player, SignInfo> sessionsList = new HashMap<>();
     private static final MiniMessage mm = MiniMessage.miniMessage();
+    private static SignGUI instance;
     private final NeonAH plugin;
 
     public SignGUI(NeonAH plugin) {
         this.plugin = plugin;
+        instance = this;
     }
 
-    public static void newSession(Player p, Consumer<String> action, List<String> lines, BlockType blockType,
-            int line) {
-        if (blockType == null || sessionsList.containsKey(p))
-            return;
+    public static SignGUI get() { return instance; }
+
+    public void open(Player p, java.util.function.BiConsumer<Player, String[]> action) {
+        newSession(p, (text) -> action.accept(p, new String[]{text}), 
+            List.of("", "^ type above ^", "────────────────", ""), org.bukkit.block.BlockType.OAK_SIGN, 1);
+    }
+
+    public static void newSession(Player p, Consumer<String> action, List<String> lines, BlockType blockType, int line) {
+        if (blockType == null || sessionsList.containsKey(p)) return;
 
         final int x = (int) Math.floor(p.getX());
-        int y = (int) Math.ceil(p.getY());
+        int y = (int) Math.floor(p.getY()) - 2;
         final int z = (int) Math.floor(p.getZ());
-        if (p.getPitch() < 0)
-            y -= 4;
-        else
-            y += 5;
+        final Location loc = new Location(p.getWorld(), x, y, z);
 
         Sign signState = (Sign) blockType.createBlockData().createBlockState();
         var frontSide = signState.getSide(Side.FRONT);
         for (int i = 0; i < Math.min(4, lines.size()); i++)
             frontSide.line(i, mm.deserialize(lines.get(i)));
 
-        final Location loc = new Location(p.getWorld(), x, y, z);
         p.sendBlockChange(loc, signState.getBlockData());
         p.sendBlockUpdate(loc, signState);
         p.openVirtualSign(Position.block(loc), Side.FRONT);
 
-        sessionsList.put(p, new SignInfo(action, blockType, line,
-                new Vector3i(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ())));
+        sessionsList.put(p, new SignInfo(action, blockType, line, new Vector3i(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ())));
     }
 
     @Override
     public void onPacketReceive(@NonNull PacketReceiveEvent e) {
-        if (e.getPacketType() != PacketType.Play.Client.UPDATE_SIGN)
-            return;
-
+        if (e.getPacketType() != PacketType.Play.Client.UPDATE_SIGN) return;
         final Player player = (Player) e.getPlayer();
         final SignInfo info = sessionsList.get(player);
-        if (info == null)
-            return;
+        if (info == null) return;
 
         final WrapperPlayClientUpdateSign wrapper = new WrapperPlayClientUpdateSign(e);
-        if (!wrapper.getBlockPosition().equals(info.pos()))
-            return;
+        if (!wrapper.getBlockPosition().equals(info.pos())) return;
 
         final String[] lines = wrapper.getTextLines();
         info.action().accept(lines[Math.max(0, info.line() - 1)]);
-
         sessionsList.remove(player);
 
         final Location loc = new Location(player.getWorld(), info.pos().getX(), info.pos().getY(), info.pos().getZ());
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        player.getScheduler().run(plugin, t -> {
             player.sendBlockChange(loc, player.getWorld().getBlockData(loc));
             if (player.getWorld().getBlockState(loc) instanceof TileState tile)
                 player.sendBlockUpdate(loc, tile);
-        });
+        }, null);
 
         e.setCancelled(true);
     }

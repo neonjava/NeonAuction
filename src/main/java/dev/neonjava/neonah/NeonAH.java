@@ -18,6 +18,11 @@ import io.papermc.paper.command.brigadier.Commands;
 public class NeonAH extends JavaPlugin {
     private static NeonAH instance;
     private static Economy economy;
+    private final net.kyori.adventure.text.minimessage.MiniMessage mm = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage();
+
+    public net.kyori.adventure.text.minimessage.MiniMessage getMm() {
+        return mm;
+    }
 
     @Override
     public void onLoad() {
@@ -37,17 +42,17 @@ public class NeonAH extends JavaPlugin {
         PacketEvents.getAPI().init();
 
         if (!setupEconomy()) {
-            Bukkit.getLogger().severe("NeonAH could not find Vault economy provider!");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
+            Bukkit.getLogger().warning("NeonAH: Vault economy provider not found yet. Will retry in 5 seconds...");
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                if (!setupEconomy()) {
+                    Bukkit.getLogger().severe("NeonAH: Still no Vault economy provider found! Auction features will be limited.");
+                } else {
+                    Bukkit.getLogger().info("NeonAH: Vault economy provider connected!");
+                }
+            }, 100L); // 5 seconds
         }
 
         dev.neonjava.neonah.managers.ConfigManager.get().init();
-
-        String key = dev.neonjava.neonah.managers.ConfigManager.get().getConfig().getString("license-key",
-                "NEON-AHHH-0000");
-        Bukkit.getLogger().info("Verifying NeonLock AH License...");
-        new dev.neonjava.neonah.utils.NeonLicense(this, key).verify();
 
         AHManager.get().init();
 
