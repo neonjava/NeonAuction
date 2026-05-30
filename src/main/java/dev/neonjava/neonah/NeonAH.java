@@ -43,7 +43,7 @@ public class NeonAH extends JavaPlugin {
 
         if (!setupEconomy()) {
             Bukkit.getLogger().warning("NeonAH: Vault economy provider not found yet. Will retry in 5 seconds...");
-            Bukkit.getScheduler().runTaskLater(this, () -> {
+            Bukkit.getGlobalRegionScheduler().runDelayed(this, task -> {
                 if (!setupEconomy()) {
                     Bukkit.getLogger().severe("NeonAH: Still no Vault economy provider found! Auction features will be limited.");
                 } else {
@@ -69,7 +69,12 @@ public class NeonAH extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new AHDialogListener(), this);
 
         // Periodically check for expired items (every 5 mins = 6000 ticks)
-        Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> AHManager.get().checkExpiry(), 1200L, 6000L);
+        Bukkit.getAsyncScheduler().runAtFixedRate(
+                this,
+                task -> AHManager.get().checkExpiry(),
+                1200L * 50L,
+                6000L * 50L,
+                java.util.concurrent.TimeUnit.MILLISECONDS);
 
         Bukkit.getLogger().info("NeonAH v" + getDescription().getVersion() + " (with PacketEvents) Loaded!");
     }
