@@ -72,11 +72,11 @@ public class SignGUI implements PacketListener {
         if (!wrapper.getBlockPosition().equals(info.pos())) return;
 
         final String[] lines = wrapper.getTextLines();
-        info.action().accept(lines[Math.max(0, info.line() - 1)]);
         sessionsList.remove(player);
 
         final Location loc = new Location(player.getWorld(), info.pos().getX(), info.pos().getY(), info.pos().getZ());
         player.getScheduler().run(plugin, t -> {
+            info.action().accept(lines[Math.max(0, info.line() - 1)]);
             player.sendBlockChange(loc, player.getWorld().getBlockData(loc));
             if (player.getWorld().getBlockState(loc) instanceof TileState tile)
                 player.sendBlockUpdate(loc, tile);

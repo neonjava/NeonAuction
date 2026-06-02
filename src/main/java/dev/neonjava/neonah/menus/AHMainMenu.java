@@ -61,15 +61,7 @@ public class AHMainMenu extends AHBaseMenu {
         inventory.clear();
         net.kyori.adventure.text.minimessage.MiniMessage mm = net.kyori.adventure.text.minimessage.MiniMessage
                 .miniMessage();
-        List<AHItem> items = new ArrayList<>(AHManager.get().getItems());
-
-        // Handle Search filtering if needed (will be implemented in MenuListener)
-        
-        switch (sortMode) {
-            case RECENT -> items.sort(Comparator.comparingLong(AHItem::getListedAt).reversed());
-            case LOW -> items.sort(Comparator.comparingDouble(AHItem::getPrice));
-            case HIGH -> items.sort(Comparator.comparingDouble(AHItem::getPrice).reversed());
-        }
+        List<AHItem> items = getVisibleItems(player, sortMode);
 
         int start = page * 45;
         int end = Math.min(start + 45, items.size());
@@ -153,7 +145,9 @@ public class AHMainMenu extends AHBaseMenu {
         // Search
         inventory.setItem(47, create(Material.COMPASS,
                 "<gradient:#a1c4fd:#c2e9fb><bold>ѕᴇᴀʀᴄʜ</bold></gradient>",
-                "<gray>Search by item or username"));
+                AHManager.get().getSearchQuery(player.getUniqueId()) == null
+                        ? "<gray>Search by item or username"
+                        : "<gray>Searching: <white>" + AHManager.get().getSearchQuery(player.getUniqueId())));
 
         // Navigation
         if (page > 0)
@@ -206,5 +200,49 @@ public class AHMainMenu extends AHBaseMenu {
 
     public SortMode getSortMode() {
         return sortMode;
+    }
+
+    public Player getViewer() {
+        return player;
+    }
+
+    public static List<AHItem> getVisibleItems(Player player, SortMode sortMode) {
+        List<AHItem> items = new ArrayList<>(AHManager.get().getItems());
+
+        String searchQuery = AHManager.get().getSearchQuery(player.getUniqueId());
+        if (searchQuery != null && !searchQuery.isBlank()) {
+            String query = searchQuery.toLowerCase(Locale.ROOT).replace("_", " ").trim();
+            items.removeIf(item -> !matchesSearch(item, query));
+        }
+
+        switch (sortMode) {
+            case RECENT -> items.sort(Comparator.comparingLong(AHItem::getListedAt).reversed());
+            case LOW -> items.sort(Comparator.comparingDouble(AHItem::getPrice));
+            case HIGH -> items.sort(Comparator.comparingDouble(AHItem::getPrice).reversed());
+        }
+
+        return items;
+    }
+
+    private static boolean matchesSearch(AHItem item, String query) {
+        String materialName = item.getItem().getType().name().toLowerCase(Locale.ROOT).replace("_", " ");
+        String materialKey = item.getItem().getType().key().asString().toLowerCase(Locale.ROOT).replace("minecraft:", "").replace("_", " ");
+        String displayName = materialName;
+
+        ItemMeta meta = item.getItem().getItemMeta();
+        if (meta != null && meta.hasDisplayName() && meta.displayName() != null) {
+            displayName = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(meta.displayName())
+                    .toLowerCase(Locale.ROOT);
+        }
+
+        String sellerName = Bukkit.getOfflinePlayer(item.getSeller()).getName();
+        if (sellerName == null) sellerName = "";
+        sellerName = sellerName.toLowerCase(Locale.ROOT);
+
+        return materialName.contains(query)
+                || materialKey.contains(query)
+                || displayName.contains(query)
+                || sellerName.contains(query);
     }
 }

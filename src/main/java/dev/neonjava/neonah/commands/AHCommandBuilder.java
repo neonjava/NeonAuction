@@ -25,10 +25,25 @@ public class AHCommandBuilder {
     public LiteralCommandNode<CommandSourceStack> buildMain(String name) {
         return Commands.literal(name)
                 .executes(ctx -> {
-                    if (ctx.getSource().getExecutor() instanceof Player p)
+                    if (ctx.getSource().getExecutor() instanceof Player p) {
+                        AHManager.get().clearSearchQuery(p.getUniqueId());
                         new AHMainMenu(p, false).open(p);
+                    }
                     return 1;
                 })
+                .then(Commands.argument("search", StringArgumentType.greedyString())
+                        .executes(ctx -> {
+                            if (!(ctx.getSource().getExecutor() instanceof Player p))
+                                return 0;
+                            String search = StringArgumentType.getString(ctx, "search").trim();
+                            if (search.isEmpty()) {
+                                AHManager.get().clearSearchQuery(p.getUniqueId());
+                            } else {
+                                AHManager.get().setSearchQuery(p.getUniqueId(), search);
+                            }
+                            new AHMainMenu(p, false).open(p);
+                            return 1;
+                        }))
                 .then(Commands.literal("sell")
                         .then(Commands.argument("price_str", StringArgumentType.string())
                                 .executes(ctx -> {

@@ -12,6 +12,7 @@ public class AHManager {
     private final AHStorage storage = new AHStorage();
     private final List<AHItem> activeItems = new CopyOnWriteArrayList<>();
     private final Map<UUID, PendingAction> pending = new ConcurrentHashMap<>();
+    private final Map<UUID, String> searchQueries = new ConcurrentHashMap<>();
     public static class PendingAction {
         public final String type;
         public final AHItem item;
@@ -200,5 +201,22 @@ public class AHManager {
                 .filter(i -> i.getSeller().equals(p.getUniqueId()))
                 .count();
         return active >= getLimit(p);
+    }
+
+    // --- Search Query Storage ---
+    public void setSearchQuery(UUID player, String query) {
+        if (query == null || query.isBlank()) {
+            searchQueries.remove(player);
+        } else {
+            searchQueries.put(player, query);
+        }
+    }
+
+    public String getSearchQuery(UUID player) {
+        return searchQueries.get(player);
+    }
+
+    public void clearSearchQuery(UUID player) {
+        searchQueries.remove(player);
     }
 }

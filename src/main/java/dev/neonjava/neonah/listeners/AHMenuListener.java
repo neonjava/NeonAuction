@@ -66,10 +66,12 @@ public class AHMenuListener implements Listener {
                 player.closeInventory();
                 dev.neonjava.neonah.utils.SignGUI.get().open(player, (p, lines) -> {
                     String search = lines[0].trim();
-                    if (search.isEmpty()) return;
-                    // For now, we'll just filter in real-time or send a message
-                    // In a full implementation, we'd pass this to the menu
-                    player.sendMessage(ConfigManager.get().getMiniMessage("searching-for").replaceText(b -> b.matchLiteral("%search%").replacement(search)));
+                    if (search.isEmpty()) {
+                        AHManager.get().clearSearchQuery(p.getUniqueId());
+                    } else {
+                        AHManager.get().setSearchQuery(p.getUniqueId(), search);
+                    }
+                    new AHMainMenu(p, false).open(p);
                 });
                 return;
             }
@@ -228,12 +230,6 @@ public class AHMenuListener implements Listener {
     }
 
     private List<AHItem> getSortedItems(AHMainMenu menu) {
-        List<AHItem> items = new ArrayList<>(AHManager.get().getItems());
-        switch (menu.getSortMode()) {
-            case RECENT -> items.sort(Comparator.comparingLong(AHItem::getListedAt).reversed());
-            case LOW -> items.sort(Comparator.comparingDouble(AHItem::getPrice));
-            case HIGH -> items.sort(Comparator.comparingDouble(AHItem::getPrice).reversed());
-        }
-        return items;
+        return AHMainMenu.getVisibleItems(menu.getViewer(), menu.getSortMode());
     }
 }
