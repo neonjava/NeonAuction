@@ -65,6 +65,9 @@ messages:
   # Global broadcasts
   global-broadcast: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <gray>%name% listed <white>%item% <gray>for <yellow>%price%<gray>!"
   buy-broadcast: "<gradient:#84fab0:#8fd3f4><bold>[AH]</bold></gradient> <gray>%buyer% <white>purchased <white>%item% <gray>from <white>%seller% <gray>for <yellow>%price%<gray>!"
+  searching-for: "<gray>Searching for: <white>%search%"
+  collected-unclaimed: "<green>You claimed your unclaimed items."
+  listing-force-removed: "<red>Listing successfully removed by admin."
   
   lore:
     price: "<gray>ᴘʀɪᴄᴇ: <yellow>%price%"

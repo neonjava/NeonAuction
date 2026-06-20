@@ -147,7 +147,7 @@ public class AHMainMenu extends AHBaseMenu {
                 "<gradient:#a1c4fd:#c2e9fb><bold>ѕᴇᴀʀᴄʜ</bold></gradient>",
                 AHManager.get().getSearchQuery(player.getUniqueId()) == null
                         ? "<gray>Search by item or username"
-                        : "<gray>Searching: <white>" + AHManager.get().getSearchQuery(player.getUniqueId())));
+                        : ConfigManager.get().getMessage("searching-for").replace("%search%", AHManager.get().getSearchQuery(player.getUniqueId()))));
 
         // Navigation
         if (page > 0)

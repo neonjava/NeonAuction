@@ -85,7 +85,7 @@ public class AHHistoryMenu extends AHBaseMenu {
         // Search
         inventory.setItem(47, create(Material.COMPASS,
                 "<gradient:#a1c4fd:#c2e9fb><bold>ѕᴇᴀʀᴄʜ</bold></gradient>",
-                search == null ? "<gray>Click to search history" : "<gray>Searching: <white>" + search,
+                search == null ? "<gray>Click to search history" : ConfigManager.get().getMessage("searching-for").replace("%search%", search),
                 "<gray>Filter by item name or player"));
 
         if (page > 0)

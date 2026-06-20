@@ -93,7 +93,10 @@ public class AHManager {
     }
 
     public void broadcast(String message) {
-        org.bukkit.Bukkit.broadcast(dev.neonjava.neonah.NeonAH.get().getMm().deserialize(message));
+        net.kyori.adventure.text.Component component = dev.neonjava.neonah.NeonAH.get().getMm().deserialize(message);
+        for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+            p.sendActionBar(component);
+        }
     }
 
     public void removeItem(AHItem item) {
