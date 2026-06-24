@@ -55,6 +55,8 @@ public class AHStorage {
                         "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), item_data LONGTEXT, created_at BIGINT)");
                 s.execute("CREATE TABLE IF NOT EXISTS ah_history_v2 (" +
                         "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), buyer VARCHAR(36), price DOUBLE, item_data LONGTEXT, sold_at BIGINT, uuid VARCHAR(36), type VARCHAR(16), created_at BIGINT)");
+                s.execute("CREATE TABLE IF NOT EXISTS ah_player_settings (" +
+                        "uuid VARCHAR(36) PRIMARY KEY, messages BOOLEAN, quickbuy BOOLEAN)");
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -320,6 +322,45 @@ public class AHStorage {
             return (ItemStack) bois.readObject();
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    public static class AHPlayerSettings {
+        public boolean messages = true;
+        public boolean quickbuy = false;
+
+        public AHPlayerSettings(boolean messages, boolean quickbuy) {
+            this.messages = messages;
+            this.quickbuy = quickbuy;
+        }
+
+        public AHPlayerSettings() {}
+    }
+
+    public AHPlayerSettings loadSettings(UUID uuid) {
+        try (Connection c = getConnection();
+             PreparedStatement ps = c.prepareStatement("SELECT messages, quickbuy FROM ah_player_settings WHERE uuid = ?")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new AHPlayerSettings(rs.getBoolean("messages"), rs.getBoolean("quickbuy"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return new AHPlayerSettings(true, false);
+    }
+
+    public void saveSettings(UUID uuid, AHPlayerSettings settings) {
+        try (Connection c = getConnection();
+             PreparedStatement ps = c.prepareStatement("INSERT OR REPLACE INTO ah_player_settings (uuid, messages, quickbuy) VALUES (?, ?, ?)")) {
+            ps.setString(1, uuid.toString());
+            ps.setBoolean(2, settings.messages);
+            ps.setBoolean(3, settings.quickbuy);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 }

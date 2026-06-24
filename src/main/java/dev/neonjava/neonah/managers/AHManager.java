@@ -13,6 +13,31 @@ public class AHManager {
     private final List<AHItem> activeItems = new CopyOnWriteArrayList<>();
     private final Map<UUID, PendingAction> pending = new ConcurrentHashMap<>();
     private final Map<UUID, String> searchQueries = new ConcurrentHashMap<>();
+    private final Map<UUID, AHStorage.AHPlayerSettings> playerSettings = new ConcurrentHashMap<>();
+
+    public AHStorage.AHPlayerSettings getPlayerSettings(UUID uuid) {
+        return playerSettings.computeIfAbsent(uuid, storage::loadSettings);
+    }
+
+    public boolean isMessages(UUID uuid) {
+        return getPlayerSettings(uuid).messages;
+    }
+
+    public void toggleMessages(UUID uuid) {
+        AHStorage.AHPlayerSettings settings = getPlayerSettings(uuid);
+        settings.messages = !settings.messages;
+        storage.saveSettings(uuid, settings);
+    }
+
+    public boolean isQuickbuy(UUID uuid) {
+        return getPlayerSettings(uuid).quickbuy;
+    }
+
+    public void toggleQuickbuy(UUID uuid) {
+        AHStorage.AHPlayerSettings settings = getPlayerSettings(uuid);
+        settings.quickbuy = !settings.quickbuy;
+        storage.saveSettings(uuid, settings);
+    }
     public static class PendingAction {
         public final String type;
         public final AHItem item;
@@ -95,7 +120,9 @@ public class AHManager {
     public void broadcast(String message) {
         net.kyori.adventure.text.Component component = dev.neonjava.neonah.NeonAH.get().getMm().deserialize(message);
         for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
-            p.sendActionBar(component);
+            if (isMessages(p.getUniqueId())) {
+                p.sendActionBar(component);
+            }
         }
     }
 

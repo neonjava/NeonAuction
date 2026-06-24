@@ -116,6 +116,27 @@ public class AHCommandBuilder {
                                                     .replace("%compact%", AHFormatter.formatPrice(price))));
                                     return 1;
                                 })))
+                .then(Commands.literal("toggle")
+                        .then(Commands.literal("messages")
+                                .executes(ctx -> {
+                                    if (!(ctx.getSource().getExecutor() instanceof Player p))
+                                        return 0;
+                                    AHManager.get().toggleMessages(p.getUniqueId());
+                                    boolean messagesOn = AHManager.get().isMessages(p.getUniqueId());
+                                    p.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+                                            "<gradient:#8fd3f4:#84fab0><bold>[AH]</bold></gradient> <white>Auction house broadcast messages are now " + (messagesOn ? "<green>ENABLED" : "<red>DISABLED") + "<white>!"));
+                                    return 1;
+                                }))
+                        .then(Commands.literal("quickbuy")
+                                .executes(ctx -> {
+                                    if (!(ctx.getSource().getExecutor() instanceof Player p))
+                                        return 0;
+                                    AHManager.get().toggleQuickbuy(p.getUniqueId());
+                                    boolean quickbuyOn = AHManager.get().isQuickbuy(p.getUniqueId());
+                                    p.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(
+                                            "<gradient:#8fd3f4:#84fab0><bold>[AH]</bold></gradient> <white>Quick Buy is now " + (quickbuyOn ? "<green>ENABLED <gray>(no confirmation UI)" : "<red>DISABLED <gray>(with confirmation UI)") + "<white>!"));
+                                    return 1;
+                                })))
                 .build();
     }
 

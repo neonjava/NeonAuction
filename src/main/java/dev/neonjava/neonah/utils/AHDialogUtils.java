@@ -24,8 +24,13 @@ public class AHDialogUtils {
         private static final Set<UUID> locks = ConcurrentHashMap.newKeySet();
 
         public static void showBuyDialog(Player p, AHItem item) {
-                AHManager.get().setPending(p.getUniqueId(), "buy", item);
-                new AHConfirmMenu("buy", item).open(p);
+                if (AHManager.get().isQuickbuy(p.getUniqueId())) {
+                        processPurchase(p, item);
+                        p.closeInventory();
+                } else {
+                        AHManager.get().setPending(p.getUniqueId(), "buy", item);
+                        new AHConfirmMenu("buy", item).open(p);
+                }
         }
 
         public static void showSelfRemoveDialog(Player p, AHItem item, int page, dev.neonjava.neonah.menus.AHMainMenu.SortMode sortMode) {
