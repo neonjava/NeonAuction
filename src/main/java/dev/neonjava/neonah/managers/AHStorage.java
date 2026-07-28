@@ -21,7 +21,10 @@ public class AHStorage {
     public record UnclaimedEntry(UUID id, ItemStack item, long createdAt) {
     }
 
-    private Connection connection;
+    // Store the DB URL so each method can open its own connection.
+    // Using try-with-resources on a *shared* Connection would close it after
+    // every query — that was the root cause of the buy bug.
+    private String dbUrl;
 
     public void init() {
         try {
@@ -30,24 +33,34 @@ public class AHStorage {
                 dataFolder.mkdirs();
 
             Class.forName("org.sqlite.JDBC");
-            connection = DriverManager.getConnection("jdbc:sqlite:" + new File(dataFolder, "auction.db").getAbsolutePath());
+            dbUrl = "jdbc:sqlite:" + new File(dataFolder, "auction.db").getAbsolutePath();
+
+            // Enable WAL mode once so concurrent reads (async expiry) and
+            // writes (main-thread purchases) don't deadlock each other.
+            try (Connection c = openConnection()) {
+                try (Statement s = c.createStatement()) {
+                    s.execute("PRAGMA journal_mode=WAL;");
+                    s.execute("PRAGMA busy_timeout=3000;");
+                }
+            }
+
             createTables();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private Connection getConnection() throws SQLException {
-        if (connection != null && !connection.isClosed())
-            return connection;
-        
-        File dataFolder = NeonAH.get().getDataFolder();
-        connection = DriverManager.getConnection("jdbc:sqlite:" + new File(dataFolder, "auction.db").getAbsolutePath());
-        return connection;
+    /**
+     * Opens a *fresh* connection for each database operation.
+     * SQLite in WAL mode handles concurrent readers + one writer safely.
+     * Every caller wraps this in try-with-resources so it is always closed.
+     */
+    private Connection openConnection() throws SQLException {
+        return DriverManager.getConnection(dbUrl);
     }
 
     private void createTables() {
-        try (Connection c = getConnection()) {
+        try (Connection c = openConnection()) {
             try (Statement s = c.createStatement()) {
                 s.execute("CREATE TABLE IF NOT EXISTS ah_active_v2 (" +
                         "id VARCHAR(36) PRIMARY KEY, seller VARCHAR(36), price DOUBLE, item_data LONGTEXT, listed_at BIGINT, created_at BIGINT)");
@@ -65,7 +78,7 @@ public class AHStorage {
 
     public List<AHItem> loadActive() {
         List<AHItem> items = new ArrayList<>();
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c.prepareStatement("SELECT * FROM ah_active_v2")) {
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
@@ -92,7 +105,7 @@ public class AHStorage {
     public List<ItemStack> loadUnclaimed(UUID seller) {
         purgeExpiredUnclaimed();
         List<ItemStack> items = new ArrayList<>();
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c
                         .prepareStatement("SELECT item_data FROM ah_unclaimed_items WHERE seller = ? ORDER BY created_at DESC")) {
             ps.setString(1, seller.toString());
@@ -111,7 +124,7 @@ public class AHStorage {
     public List<UnclaimedEntry> loadUnclaimedEntries(UUID seller) {
         purgeExpiredUnclaimed();
         List<UnclaimedEntry> items = new ArrayList<>();
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c.prepareStatement(
                         "SELECT id, item_data, created_at FROM ah_unclaimed_items WHERE seller = ? ORDER BY created_at DESC")) {
             ps.setString(1, seller.toString());
@@ -132,7 +145,7 @@ public class AHStorage {
     }
 
     public void saveItem(AHItem item) {
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c.prepareStatement(
                         "INSERT OR REPLACE INTO ah_active_v2 (id, seller, price, item_data, created_at, listed_at) VALUES (?,?,?,?,?,?)")) {
             long now = item.getListedAt() > 0 ? item.getListedAt() : System.currentTimeMillis();
@@ -149,7 +162,7 @@ public class AHStorage {
     }
 
     public boolean exists(UUID id) {
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c.prepareStatement("SELECT 1 FROM ah_active_v2 WHERE id = ?")) {
             ps.setString(1, id.toString());
             return ps.executeQuery().next();
@@ -160,7 +173,7 @@ public class AHStorage {
 
     public AHItem loadActiveItem(UUID id) {
         String sql = "SELECT * FROM ah_active_v2 WHERE id = ? LIMIT 1";
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, id.toString());
             ResultSet rs = ps.executeQuery();
@@ -184,7 +197,7 @@ public class AHStorage {
     }
 
     public void deleteItem(UUID id) {
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c.prepareStatement("DELETE FROM ah_active_v2 WHERE id = ?")) {
             ps.setString(1, id.toString());
             ps.execute();
@@ -194,7 +207,7 @@ public class AHStorage {
     }
 
     public void addUnclaimed(UUID seller, ItemStack item) {
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c
                         .prepareStatement("INSERT INTO ah_unclaimed_items (id, seller, item_data, created_at) VALUES (?,?,?,?)")) {
             ps.setString(1, UUID.randomUUID().toString());
@@ -210,7 +223,7 @@ public class AHStorage {
     public ItemStack claimUnclaimed(UUID seller, UUID unclaimedId) {
         String select = "SELECT item_data FROM ah_unclaimed_items WHERE id = ? AND seller = ? LIMIT 1";
         String delete = "DELETE FROM ah_unclaimed_items WHERE id = ? AND seller = ?";
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement sel = c.prepareStatement(select);
                 PreparedStatement del = c.prepareStatement(delete)) {
             sel.setString(1, unclaimedId.toString());
@@ -231,7 +244,7 @@ public class AHStorage {
     }
 
     public void clearUnclaimed(UUID seller) {
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c.prepareStatement("DELETE FROM ah_unclaimed_items WHERE seller = ?")) {
             ps.setString(1, seller.toString());
             ps.execute();
@@ -242,7 +255,7 @@ public class AHStorage {
 
     public void recordHistory(UUID seller, UUID buyer, double price, ItemStack item) {
         String sql = "INSERT INTO ah_history_v2 (id, seller, buyer, price, item_data, sold_at, uuid, type, created_at) VALUES (?,?,?,?,?,?,?,?,?)";
-        try (Connection c = getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+        try (Connection c = openConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             long now = System.currentTimeMillis();
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, seller.toString());
@@ -261,7 +274,7 @@ public class AHStorage {
 
     public List<AHHistoryItem> getHistory(UUID player) {
         List<AHHistoryItem> list = new ArrayList<>();
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c.prepareStatement(
                         "SELECT * FROM ah_history_v2 WHERE seller = ? OR buyer = ? ORDER BY sold_at DESC LIMIT 100")) {
             ps.setString(1, player.toString());
@@ -285,19 +298,14 @@ public class AHStorage {
     }
 
     public void shutdown() {
-        try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        // No persistent connection to close — each query opens and closes
+        // its own connection via try-with-resources (see openConnection()).
     }
 
     public void purgeExpiredUnclaimed() {
         long retentionDays = ConfigManager.get().getConfig().getLong("settings.unclaimed-retention-days", 10L);
         long cutoff = System.currentTimeMillis() - (retentionDays * 24L * 60L * 60L * 1000L);
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
                 PreparedStatement ps = c.prepareStatement("DELETE FROM ah_unclaimed_items WHERE created_at < ?")) {
             ps.setLong(1, cutoff);
             ps.execute();
@@ -338,7 +346,7 @@ public class AHStorage {
     }
 
     public AHPlayerSettings loadSettings(UUID uuid) {
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
              PreparedStatement ps = c.prepareStatement("SELECT messages, quickbuy FROM ah_player_settings WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
@@ -353,7 +361,7 @@ public class AHStorage {
     }
 
     public void saveSettings(UUID uuid, AHPlayerSettings settings) {
-        try (Connection c = getConnection();
+        try (Connection c = openConnection();
              PreparedStatement ps = c.prepareStatement("INSERT OR REPLACE INTO ah_player_settings (uuid, messages, quickbuy) VALUES (?, ?, ?)")) {
             ps.setString(1, uuid.toString());
             ps.setBoolean(2, settings.messages);

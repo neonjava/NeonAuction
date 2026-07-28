@@ -89,6 +89,13 @@ public class NeonAH extends JavaPlugin {
     private boolean setupEconomy() {
         if (getServer().getPluginManager().getPlugin("Vault") == null)
             return false;
+        java.util.Collection<RegisteredServiceProvider<Economy>> rsps = getServer().getServicesManager().getRegistrations(Economy.class);
+        for (RegisteredServiceProvider<Economy> rsp : rsps) {
+            if (rsp != null && rsp.getProvider() != null && "NeonEconomy".equalsIgnoreCase(rsp.getProvider().getName())) {
+                economy = rsp.getProvider();
+                return true;
+            }
+        }
         RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
         if (rsp == null)
             return false;
@@ -101,6 +108,9 @@ public class NeonAH extends JavaPlugin {
     }
 
     public static Economy getEcon() {
+        if (economy == null && instance != null) {
+            instance.setupEconomy();
+        }
         return economy;
     }
 }
