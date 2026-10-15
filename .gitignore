@@ -4,3 +4,8 @@ build/
 .idea/
 *.class
 *.jar
+
+.env
+.env.*
+!.env.example
+bin/
